@@ -18,12 +18,13 @@ var to_remove: ArrayList(usize) = .empty;
 pub fn addGameObject(gpa: Allocator, game_object: *GameObject) Allocator.Error!void {
     errdefer game_object.deinit(game_object, gpa);
     try to_add.append(gpa, game_object);
+    log.debug("adding game_object {d}", .{game_objects.items.len + to_add.items.len - 1});
 }
 /// `game_object` will definitely be deinitialized.
 /// If scene owns `game_object`, it will also be removed.
 /// Will only take effect when `update` is called.
 pub fn removeGameObject(gpa: Allocator, game_object: *GameObject) Allocator.Error!void {
-    game_object.deinit(gpa);
+    game_object.deinit(game_object, gpa);
     const idx = blk: {
         for (game_objects.items, 0..) |go, i| {
             if (go == game_object) break :blk i;
@@ -31,6 +32,7 @@ pub fn removeGameObject(gpa: Allocator, game_object: *GameObject) Allocator.Erro
         return;
     };
     try to_remove.append(gpa, idx);
+    log.debug("removing game_object {d}", .{idx});
 }
 
 /// Deinitializes all game objects and the list containing them.
@@ -99,7 +101,15 @@ pub fn draw() void {
             switch (go.draw) {
                 .none => {},
                 .texture => log.err("drawing textures not yet implemented", .{}),
-                .circle => |color| raylib.drawCircleV(go.transform.position.toRaylib(), go.transform.scale.x / 2.0, color),
+                inline .circle, .circle_dbg => |color| {
+                    const r = go.transform.scale.x / 2.0;
+                    const center = go.transform.position;
+                    const phi = go.transform.rotation;
+
+                    raylib.drawCircleV(center.toRaylib(), r, color);
+
+                    if (go.draw == .circle_dbg) raylib.drawLineV(center.toRaylib(), center.add(.fromPolar(phi, r * 1.5)).toRaylib(), color);
+                },
             }
         }
     }

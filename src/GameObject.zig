@@ -25,6 +25,7 @@ pub const DrawObject = union (enum) {
     none: void,
     texture: *const raylib.Texture2D,
     circle: raylib.Color,
+    circle_dbg: raylib.Color,
 };
 pub const DrawOrder = enum {
     invisible,

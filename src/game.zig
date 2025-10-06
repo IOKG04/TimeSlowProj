@@ -41,7 +41,7 @@ pub fn close(gpa: Allocator) void {
 pub fn run(gpa: Allocator) !void {
     while (!raylib.windowShouldClose()) {
         const dt = raylib.getFrameTime();
-        try scene.update(gpa, dt, player.game_object.transform.position, 1.0);
+        try scene.update(gpa, dt, player.game_object.transform.position, -0.1);
 
         // zig fmt: off
         raylib.beginDrawing();
