@@ -26,14 +26,19 @@ pub fn init(gpa: Allocator) Allocator.Error!*Player {
 }
 
 fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void {
-    _ = gpa;
-
     const player: *Player = @fieldParentPtr("game_object", go);
 
     if (raylib.isKeyDown(.a)) player.game_object.transform.position.x -= dt * velocity;
     if (raylib.isKeyDown(.d)) player.game_object.transform.position.x += dt * velocity;
     if (raylib.isKeyDown(.w)) player.game_object.transform.position.y -= dt * velocity;
     if (raylib.isKeyDown(.s)) player.game_object.transform.position.y += dt * velocity;
+
+    if (raylib.isKeyPressed(.space)) {
+        const dbg_timer = try @import("DbgTimer.zig").init(gpa, 1.0);
+        errdefer dbg_timer.game_object.deinit(&dbg_timer.game_object, gpa);
+        dbg_timer.game_object.transform.position = player.game_object.transform.position;
+        try @import("../scene.zig").addGameObject(gpa, &dbg_timer.game_object);
+    }
 }
 
 fn deinit(go: *GameObject, gpa: Allocator) void {

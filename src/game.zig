@@ -14,7 +14,7 @@ pub var camera: raylib.Camera2D = .{
     .offset = .{ .x = @abs(options.window_w) / 2, .y = @abs(options.window_h) / 2 },
     .target = .{ .x = 0.0, .y = 0.0 },
     .rotation = 0.0,
-    .zoom = options.window_h,
+    .zoom = @as(f32, @floatFromInt(options.window_h)) / 8.0,
 };
 
 pub fn init(gpa: Allocator) !void {
@@ -41,7 +41,7 @@ pub fn close(gpa: Allocator) void {
 pub fn run(gpa: Allocator) !void {
     while (!raylib.windowShouldClose()) {
         const dt = raylib.getFrameTime();
-        try scene.update(gpa, dt, player.game_object.transform.position, 0.0);
+        try scene.update(gpa, dt, player.game_object.transform.position, 1.0);
 
         // zig fmt: off
         raylib.beginDrawing();

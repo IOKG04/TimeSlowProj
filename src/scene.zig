@@ -79,7 +79,7 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
         if (go.paused) continue;
         const position = go.transform.position;
         const distance_from_cog = position.subtract(center_of_gravity).len();
-        const time_stretch = @exp(time_stretch_factor * distance_from_cog);
+        const time_stretch = @exp2(time_stretch_factor * distance_from_cog);
         try go.update(go, gpa, dt * time_stretch);
     }
 }

@@ -12,20 +12,14 @@ deinit: *const fn (go: *GameObject, gpa: Allocator) void,
 
 paused: bool = false,
 
-transform: Transform = .default,
+transform: Transform = .{},
 draw: DrawObject = .none,
 draw_order: DrawOrder = .default,
 
 pub const Transform = struct {
-    position: Vec2,
-    rotation: f32,
-    scale: Vec2,
-
-    pub const default: Transform = .{
-        .position = .zero,
-        .rotation = 0.0,
-        .scale = .one,
-    };
+    position: Vec2 = .zero,
+    rotation: f32 = 0.0,
+    scale: Vec2 = .one,
 };
 pub const DrawObject = union (enum) {
     none: void,
