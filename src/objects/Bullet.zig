@@ -27,6 +27,10 @@ pub fn init(gpa: Allocator, velocity: f32, lifetime: f32, position: Vec2, rotati
                 .rotation = rotation,
                 .scale = .{ .x = 0.1, .y = 0.1 },
             },
+//            .collider = .{ .circle = .{} },
+//            .collision_layer = .{
+//                .projectiles = true,
+//            },
         },
         .velocity = velocity,
         .timer = .init(lifetime, false),

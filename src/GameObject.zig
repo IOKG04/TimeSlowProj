@@ -1,3 +1,10 @@
+//! A generic game object, to be intrusively
+//! added to anything that can appear in the game.
+//!
+//! Call order per frame:
+//! 1. update
+//! 2. onCollision (for each collision)
+
 const std = @import("std");
 const raylib = @import("raylib");
 
@@ -7,14 +14,21 @@ const Allocator = std.mem.Allocator;
 
 const GameObject = @This();
 
-update: *const fn (go: *GameObject, gpa: Allocator, dt: f32) UpdateError!void,
-deinit: *const fn (go: *GameObject, gpa: Allocator) void,
+transform: Transform = .{},
 
 paused: bool = false,
+update: *const fn (self: *GameObject, gpa: Allocator, dt: f32) UpdateError!void,
+deinit: *const fn (self: *GameObject, gpa: Allocator) void,
 
-transform: Transform = .{},
 draw: DrawObject = .none,
 draw_order: DrawOrder = .default,
+
+collider: Collider = .none,
+collision_layer: CollisionLayer = .{},
+onCollision: *const fn (self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void = noOnCollision,
+
+// TODO: add a metadata part so one can mark all bullets
+// as bullets so it's easier to mass-remove game objects.
 
 pub const Transform = struct {
     position: Vec2 = .zero,
@@ -33,6 +47,71 @@ pub const DrawOrder = enum {
     default,
     foreground,
 };
+pub const Collider = union (enum) {
+    none: void,
+    /// Transform contains offset and size multiplier from containing GameObject.
+    circle: Transform,
+    /// Transform contains offset and size multiplier from containing GameObject.
+    rectangle: Transform,
+    // As an example for the transforms in colliders,
+    // lets say we have an object with the transform
+    // .{
+    //     .position = .{ 0, 1 },
+    //     .rotation = -pi / 2,
+    //     .scale = .{ 2, 1 },
+    // }
+    // and a rectangle collider with
+    // .{
+    //     .position = .{ 0, -1 },
+    //     .rotation = pi / 2,
+    //     .scale = .{ 1, 4 },
+    // }
+    // then the collider's center is at .{ 0, 0 } (additive),
+    // it's rotation is pi / 4 (additive),
+    // and it's side-lengths are 2 and 4 (multiplicative).
+};
+pub const CollisionLayer = packed struct {
+    movement: bool = false,
+    projectiles: bool = false,
+
+    pub const BackingInteger = @typeInfo(CollisionLayer).@"struct".backing_integer.?;
+
+    /// Returns layers `a` and `b` can collide on
+    /// or `null` if they cannot collide.
+    pub fn collidingLayers(a: CollisionLayer, b: CollisionLayer) ?CollisionLayer {
+        const a_int: BackingInteger = @bitCast(a);
+        const b_int: BackingInteger = @bitCast(b);
+        return @bitCast(a_int & b_int);
+    }
+    // TODO: possibly make this `inline`
+    pub fn isNone(cl: CollisionLayer) bool {
+        const cl_int: BackingInteger = @bitCast(cl);
+        return cl_int == 0;
+    }
+};
+pub const CollisionInfo = struct {
+    layers: CollisionLayer,
+};
 pub const UpdateError = error {
     GenericError,
 } || Allocator.Error;
+
+/// The default collision function.
+/// Should never get called, replace this
+/// if the game object can collide.
+pub fn noOnCollision(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
+    _ = self;
+    _ = other;
+    _ = collision_info;
+    _ = gpa;
+    unreachable;
+}
+/// Functions that do nothing.
+pub const noop = struct {
+    pub fn update(go: *GameObject, gpa: Allocator, dt: f32) UpdateError!void {
+        _ = .{ go, gpa, dt };
+    }
+    pub fn onCollision(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
+        _ = .{ self, other, collision_info, gpa };
+    }
+};

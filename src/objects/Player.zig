@@ -23,8 +23,16 @@ pub fn init(gpa: Allocator) Allocator.Error!*Player {
         .game_object = .{
             .update = update,
             .deinit = deinit,
+
             .draw_order = .foreground,
             .draw = .{ .circle_dbg = .red },
+
+            .collider = .{ .circle = .{} },
+            .collision_layer = .{
+                .movement = true,
+                .projectiles = false,
+            },
+            .onCollision = onCollision,
         },
     };
 
@@ -47,18 +55,31 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
     transform.rotation = phi;
 
     if (raylib.isKeyPressed(.space)) {
-        const dbg_timer = try objects.DbgTimer.init(gpa, 1.0, transform.position);
-        errdefer dbg_timer.game_object.deinit(&dbg_timer.game_object, gpa);
-        try scene.addGameObject(gpa, &dbg_timer.game_object);
+        const timer = try objects.dbg.Timer.init(gpa, 1.0, transform.position);
+        errdefer timer.game_object.deinit(&timer.game_object, gpa);
+        try scene.addGameObject(gpa, &timer.game_object);
     }
     if (raylib.isMouseButtonPressed(.left)) {
         const bullet = try objects.Bullet.init(gpa, velocity * 2.0, 5.0, transform.position, transform.rotation);
         errdefer bullet.game_object.deinit(&bullet.game_object, gpa);
         try scene.addGameObject(gpa, &bullet.game_object);
     }
+    if (raylib.isMouseButtonPressed(.right)) {
+        const wall_circle = try objects.dbg.WallCircle.init(gpa, internal_world_mouse_pos, 1.0);
+        errdefer wall_circle.game_object.deinit(&wall_circle.game_object, gpa);
+        try scene.addGameObject(gpa, &wall_circle.game_object);
+    }
 }
 
 fn deinit(go: *GameObject, gpa: Allocator) void {
     const player: *Player = @fieldParentPtr("game_object", go);
     gpa.destroy(player);
+}
+
+fn onCollision(self: *GameObject, other: *const GameObject, collision_info: GameObject.CollisionInfo, gpa: Allocator) GameObject.UpdateError!void {
+    _ = self;
+    _ = other;
+    _ = collision_info;
+    _ = gpa;
+    @import("../main.zig").log.debug("player colliding with something", .{});
 }

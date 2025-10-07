@@ -20,17 +20,18 @@ pub var camera: raylib.Camera2D = .{
 pub fn init(gpa: Allocator) !void {
     // init raylib
     raylib.initWindow(options.window_w, options.window_h, "TimeSlowProj");
-    defer {
-        while (!raylib.isWindowReady()) {
-            std.Thread.sleep(10 * std.time.ns_per_ms);
-        }
-        raylib.setTargetFPS(options.target_fps);
+    while (!raylib.isWindowReady()) {
+        std.Thread.sleep(10 * std.time.ns_per_ms);
     }
+    raylib.setTargetFPS(options.target_fps);
 
     // set/load/init initial game scene
-    player = try .init(gpa);
-    errdefer player.game_object.deinit(&player.game_object, gpa);
-    try scene.addGameObject(gpa, &player.game_object);
+    errdefer scene.deinit(gpa);
+    {
+        player = try .init(gpa);
+        errdefer player.game_object.deinit(&player.game_object, gpa);
+        try scene.addGameObject(gpa, &player.game_object);
+    }
 }
 
 pub fn close(gpa: Allocator) void {
@@ -49,6 +50,7 @@ pub fn run(gpa: Allocator) !void {
             camera.begin();
                 scene.draw();
             camera.end();
+            raylib.drawFPS(0, 0);
         raylib.endDrawing();
         // zig fmt: on
     }

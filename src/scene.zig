@@ -11,28 +11,19 @@ const log = @import("main.zig").log;
 
 var game_objects: ArrayList(*GameObject) = .empty;
 var to_add: ArrayList(*GameObject) = .empty;
-var to_remove: ArrayList(usize) = .empty;
+var to_remove: ArrayList(*GameObject) = .empty;
 
 /// Scene takes ownership of `game_object`.
 /// Will only take effect when `update` is called.
 pub fn addGameObject(gpa: Allocator, game_object: *GameObject) Allocator.Error!void {
-    errdefer game_object.deinit(game_object, gpa);
     try to_add.append(gpa, game_object);
-    log.debug("adding game_object {d}", .{game_objects.items.len + to_add.items.len - 1});
 }
 /// `game_object` will definitely be deinitialized.
 /// If scene owns `game_object`, it will also be removed.
 /// Will only take effect when `update` is called.
 pub fn removeGameObject(gpa: Allocator, game_object: *GameObject) Allocator.Error!void {
     game_object.deinit(game_object, gpa);
-    const idx = blk: {
-        for (game_objects.items, 0..) |go, i| {
-            if (go == game_object) break :blk i;
-        }
-        return;
-    };
-    try to_remove.append(gpa, idx);
-    log.debug("removing game_object {d}", .{idx});
+    try to_remove.append(gpa, game_object);
 }
 
 /// Deinitializes all game objects and the list containing them.
@@ -60,22 +51,30 @@ pub fn deinit(gpa: Allocator) void {
 /// if it's zero, they'll all move the same,
 /// if it's negative, they'll move slower.
 pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_factor: f32) UpdateError!void {
-    { // do this to ensure the game objects to add get deinitialized even if the append fails
+    outer_remove: for (to_remove.items) |tr| {
+        const idx = blk: {
+            for (game_objects.items, 0..) |go, i| {
+                if (go == tr) break :blk i;
+            }
+            continue :outer_remove;
+        };
+        _ = game_objects.swapRemove(idx);
+        log.debug("removed game_object {d}", .{idx});
+    }
+    to_remove.deinit(gpa);
+    to_remove = .empty;
+
+    if (to_add.items.len >= 1) {
         errdefer {
             for (to_add.items) |go| {
                 go.deinit(go, gpa);
             }
         }
         try game_objects.appendSlice(gpa, to_add.items);
+        log.debug("added game_object {d} - {d}", .{game_objects.items.len - to_add.items.len, game_objects.items.len - 1});
     }
     to_add.deinit(gpa);
     to_add = .empty;
-
-    for (to_remove.items) |tr| {
-        _ = game_objects.swapRemove(tr);
-    }
-    to_remove.deinit(gpa);
-    to_remove = .empty;
 
     for (game_objects.items) |go| {
         if (go.paused) continue;
@@ -83,6 +82,43 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
         const distance_from_cog = position.subtract(center_of_gravity).len();
         const time_stretch = @exp2(time_stretch_factor * distance_from_cog);
         try go.update(go, gpa, dt * time_stretch);
+    }
+
+    for (game_objects.items, 0..) |self, i| {
+        if (self.paused or self.collider == .none or self.collision_layer.isNone()) continue;
+        for (game_objects.items[(i + 1)..]) |other| {
+            if (other.paused or other.collider == .none or other.collision_layer.isNone()) continue;
+
+            const layers = self.collision_layer.collidingLayers(other.collision_layer) orelse continue;
+            const has_collided = blk: {
+                switch (self.collider) {
+                    .circle => |sc_transform| switch (other.collider) {
+                        .circle => |oc_transform| {
+                            const sc_position = self.transform.position.add(sc_transform.position);
+                            const oc_position = other.transform.position.add(oc_transform.position);
+                            const dst_sq = sc_position.subtract(oc_position).lenSq();
+                            const max_dst = (self.transform.scale.x * sc_transform.scale.x + other.transform.scale.x * oc_transform.scale.x) / 2.0;
+                            break :blk dst_sq < max_dst * max_dst;
+                        },
+                        .rectangle => log.err("colliding rectangles not yet implemented", .{}),
+                        .none => unreachable,
+                    },
+                    .rectangle => log.err("colliding rectangles not yet implemented", .{}),
+                    .none => unreachable,
+                }
+                break :blk false;
+            };
+            if (!has_collided) continue;
+
+            // TODO: more logic to figure out collision normal, etc.
+
+            try self.onCollision(self, other, .{
+                .layers = layers,
+            }, gpa);
+            try other.onCollision(other, self, .{
+                .layers = layers,
+            }, gpa);
+        }
     }
 }
 pub const UpdateError = GameObject.UpdateError || Allocator.Error;
