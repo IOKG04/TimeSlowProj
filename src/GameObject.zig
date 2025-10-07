@@ -27,8 +27,7 @@ collider: Collider = .none,
 collision_layer: CollisionLayer = .{},
 onCollision: *const fn (self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void = noOnCollision,
 
-// TODO: add a metadata part so one can mark all bullets
-// as bullets so it's easier to mass-remove game objects.
+metadata: Metadata,
 
 pub const Transform = struct {
     position: Vec2 = .zero,
@@ -91,6 +90,23 @@ pub const CollisionLayer = packed struct {
 };
 pub const CollisionInfo = struct {
     layers: CollisionLayer,
+    /// Points away from `other`'s surface.
+    normal: Vec2,
+    /// If `self` was moved this much in the direction of
+    /// `collision_normal`, the collision wouldn't've happened.
+    depth: f32,
+};
+pub const Metadata = struct {
+    movability: enum {
+        /// Never moved.
+        wall,
+        /// Isn't moved by outside forces.
+        immovable,
+        /// Is moved by outside forces.
+        normal,
+        /// Doesn't apply moving forces.
+        bullet,
+    } = .normal,
 };
 pub const UpdateError = error {
     GenericError,

@@ -37,9 +37,16 @@ pub fn lenSq(v: Vec2) f32 {
 pub fn len(v: Vec2) f32 {
     return @sqrt(v.lenSq());
 }
+/// Asserts `v.len() != 0.0`.
 pub fn normalize(v: Vec2) Vec2 {
     const mag = v.len();
     assert(mag > 0.0);
+    return v.scale(1.0 / mag);
+}
+/// Returns `.{ 0, 0 }` if `v.len() == 0.0`.
+pub fn normalizeSafe(v: Vec2) Vec2 {
+    const mag = v.len();
+    if (mag == 0.0) return .{ .x = 0.0, .y = 0.0 };
     return v.scale(1.0 / mag);
 }
 

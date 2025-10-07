@@ -30,9 +30,13 @@ pub fn init(gpa: Allocator) Allocator.Error!*Player {
             .collider = .{ .circle = .{} },
             .collision_layer = .{
                 .movement = true,
-                .projectiles = false,
+                .projectiles = true,
             },
             .onCollision = onCollision,
+
+            .metadata = .{
+                .movability = .normal,
+            },
         },
     };
 
@@ -60,7 +64,11 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
         try scene.addGameObject(gpa, &timer.game_object);
     }
     if (raylib.isMouseButtonPressed(.left)) {
-        const bullet = try objects.Bullet.init(gpa, velocity * 2.0, 5.0, transform.position, transform.rotation);
+        const bullet_position = transform.position.add(.{
+            .x = @cos(transform.rotation) * (transform.scale.x / 2.0 + objects.Bullet.size),
+            .y = @sin(transform.rotation) * (transform.scale.x / 2.0 + objects.Bullet.size),
+        });
+        const bullet = try objects.Bullet.init(gpa, velocity * 2.0, 5.0, bullet_position, transform.rotation);
         errdefer bullet.game_object.deinit(&bullet.game_object, gpa);
         try scene.addGameObject(gpa, &bullet.game_object);
     }
@@ -77,9 +85,14 @@ fn deinit(go: *GameObject, gpa: Allocator) void {
 }
 
 fn onCollision(self: *GameObject, other: *const GameObject, collision_info: GameObject.CollisionInfo, gpa: Allocator) GameObject.UpdateError!void {
-    _ = self;
-    _ = other;
-    _ = collision_info;
     _ = gpa;
-    @import("../main.zig").log.debug("player colliding with something", .{});
+
+    const player: *Player = @fieldParentPtr("game_object", self);
+
+    const movement_factor: f32 = switch (other.metadata.movability) {
+        .bullet => 0.0,
+        .normal => collision_info.depth / 2.0,
+        .immovable, .wall => collision_info.depth,
+    };
+    player.game_object.transform.position = player.game_object.transform.position.add(collision_info.normal.scale(movement_factor));
 }

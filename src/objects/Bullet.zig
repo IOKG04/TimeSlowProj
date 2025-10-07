@@ -9,6 +9,8 @@ const Allocator = std.mem.Allocator;
 
 const Bullet = @This();
 
+pub const size: f32 = 0.1;
+
 game_object: GameObject,
 velocity: f32,
 timer: parts.Timer,
@@ -19,18 +21,26 @@ pub fn init(gpa: Allocator, velocity: f32, lifetime: f32, position: Vec2, rotati
 
     outp.* = .{
         .game_object = .{
-            .update = update,
-            .deinit = deinit,
-            .draw = .{ .circle = .white },
             .transform = .{
                 .position = position,
                 .rotation = rotation,
-                .scale = .{ .x = 0.1, .y = 0.1 },
+                .scale = .{ .x = size, .y = size },
             },
-//            .collider = .{ .circle = .{} },
-//            .collision_layer = .{
-//                .projectiles = true,
-//            },
+
+            .update = update,
+            .deinit = deinit,
+
+            .draw = .{ .circle = .white },
+
+            .collider = .{ .circle = .{} },
+            .collision_layer = .{
+                .projectiles = true,
+            },
+            .onCollision = onCollision,
+
+            .metadata = .{
+                .movability = .bullet,
+            },
         },
         .velocity = velocity,
         .timer = .init(lifetime, false),
@@ -53,4 +63,10 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
 fn deinit(go: *GameObject, gpa: Allocator) void {
     const bullet: *Bullet = @fieldParentPtr("game_object", go);
     gpa.destroy(bullet);
+}
+
+fn onCollision(self: *GameObject, other: *const GameObject, collision_info: GameObject.CollisionInfo, gpa: Allocator) GameObject.UpdateError!void {
+    _ = other;
+    _ = collision_info;
+    try scene.removeGameObject(gpa, self);
 }

@@ -18,16 +18,26 @@ pub fn init(gpa: Allocator, position: Vec2, radius: f32) Allocator.Error!*WallCi
 
     outp.* = .{
         .game_object = .{
-            .update = GameObject.noop.update,
-            .deinit = deinit,
-            .draw = .{ .circle = .maroon },
             .transform = .{
                 .position = position,
                 .scale = .{ .x = radius, .y = radius },
             },
+
+            .update = GameObject.noop.update,
+            .deinit = deinit,
+
+            .draw = .{ .circle = .dark_brown },
+
             .collider = .{ .circle = .{} },
-            .collision_layer = .{ .movement = true },
+            .collision_layer = .{
+                .movement = true,
+                .projectiles = true,
+            },
             .onCollision = GameObject.noop.onCollision,
+
+            .metadata = .{
+                .movability = .wall,
+            },
         },
     };
 

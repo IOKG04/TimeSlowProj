@@ -18,11 +18,9 @@ var to_remove: ArrayList(*GameObject) = .empty;
 pub fn addGameObject(gpa: Allocator, game_object: *GameObject) Allocator.Error!void {
     try to_add.append(gpa, game_object);
 }
-/// `game_object` will definitely be deinitialized.
 /// If scene owns `game_object`, it will also be removed.
 /// Will only take effect when `update` is called.
 pub fn removeGameObject(gpa: Allocator, game_object: *GameObject) Allocator.Error!void {
-    game_object.deinit(game_object, gpa);
     try to_remove.append(gpa, game_object);
 }
 
@@ -58,7 +56,8 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
             }
             continue :outer_remove;
         };
-        _ = game_objects.swapRemove(idx);
+        const removed = game_objects.swapRemove(idx);
+        removed.deinit(removed, gpa);
         log.debug("removed game_object {d}", .{idx});
     }
     to_remove.deinit(gpa);
@@ -89,16 +88,31 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
         for (game_objects.items[(i + 1)..]) |other| {
             if (other.paused or other.collider == .none or other.collision_layer.isNone()) continue;
 
-            const layers = self.collision_layer.collidingLayers(other.collision_layer) orelse continue;
-            const has_collided = blk: {
+            const cinfo_self: GameObject.CollisionInfo, const cinfo_other: GameObject.CollisionInfo = blk: {
+                const layers = self.collision_layer.collidingLayers(other.collision_layer) orelse continue;
+
                 switch (self.collider) {
                     .circle => |sc_transform| switch (other.collider) {
                         .circle => |oc_transform| {
                             const sc_position = self.transform.position.add(sc_transform.position);
                             const oc_position = other.transform.position.add(oc_transform.position);
-                            const dst_sq = sc_position.subtract(oc_position).lenSq();
+                            const dst = sc_position.subtract(oc_position).len();
                             const max_dst = (self.transform.scale.x * sc_transform.scale.x + other.transform.scale.x * oc_transform.scale.x) / 2.0;
-                            break :blk dst_sq < max_dst * max_dst;
+                            const overlap = max_dst - dst;
+                            if (overlap <= 0) continue else {
+                                break :blk .{
+                                    .{
+                                        .layers = layers,
+                                        .normal = sc_position.subtract(oc_position).normalizeSafe(),
+                                        .depth = overlap,
+                                    },
+                                    .{
+                                        .layers = layers,
+                                        .normal = oc_position.subtract(sc_position).normalizeSafe(),
+                                        .depth = overlap,
+                                    },
+                                };
+                            }
                         },
                         .rectangle => log.err("colliding rectangles not yet implemented", .{}),
                         .none => unreachable,
@@ -106,18 +120,12 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
                     .rectangle => log.err("colliding rectangles not yet implemented", .{}),
                     .none => unreachable,
                 }
-                break :blk false;
+
+                continue;
             };
-            if (!has_collided) continue;
 
-            // TODO: more logic to figure out collision normal, etc.
-
-            try self.onCollision(self, other, .{
-                .layers = layers,
-            }, gpa);
-            try other.onCollision(other, self, .{
-                .layers = layers,
-            }, gpa);
+            try self.onCollision(self, other, cinfo_self, gpa);
+            try other.onCollision(other, self, cinfo_other, gpa);
         }
     }
 }

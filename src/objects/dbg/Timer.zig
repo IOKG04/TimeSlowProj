@@ -21,12 +21,18 @@ pub fn init(gpa: Allocator, interval: f32, position: Vec2) Allocator.Error!*Time
 
     outp.* = .{
         .game_object = .{
-            .update = update,
-            .deinit = deinit,
-            .draw = .{ .circle = .blue },
             .transform = .{
                 .position = position,
                 .scale = .{ .x = 0.5, .y = 0.5 },
+            },
+
+            .update = update,
+            .deinit = deinit,
+
+            .draw = .{ .circle = .blue },
+
+            .metadata = .{
+                .movability = .wall,
             },
         },
         .timer = .init(interval, true),
