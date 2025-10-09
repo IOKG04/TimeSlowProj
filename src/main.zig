@@ -27,3 +27,7 @@ comptime {
     std.debug.assert(options.window_h > 0);
     std.debug.assert(options.target_fps > 0);
 }
+
+test {
+    std.testing.refAllDeclsRecursive(@This());
+}

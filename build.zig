@@ -4,6 +4,15 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const window_w = b.option(u31, "window_w", "Width of the games window") orelse 600;
+    const window_h = b.option(u31, "window_h", "Height of the games window") orelse 360;
+    const target_fps = b.option(u31, "target_fps", "Maximum FPS the game renders at") orelse 60;
+
+    const options = b.addOptions();
+    options.addOption(u31, "window_w", window_w);
+    options.addOption(u31, "window_h", window_h);
+    options.addOption(u31, "target_fps", target_fps);
+
     const raylib_dep = b.dependency("raylib_zig", .{
         .target = target,
         .optimize = optimize,
@@ -11,11 +20,6 @@ pub fn build(b: *std.Build) void {
     const raylib = raylib_dep.module("raylib");
     const raygui = raylib_dep.module("raygui");
     const raylib_artifact = raylib_dep.artifact("raylib");
-
-    const options = b.addOptions();
-    options.addOption(i32, "window_w", 600);
-    options.addOption(i32, "window_h", 360);
-    options.addOption(i32, "target_fps", 60);
 
     const exe = b.addExecutable(.{
         .name = "TimeSlowProj",
@@ -35,4 +39,12 @@ pub fn build(b: *std.Build) void {
     if (b.args) |args| run_exe.addArgs(args);
     const run_step = b.step("run", "Run the program");
     run_step.dependOn(&run_exe.step);
+
+    const test_exe = b.addTest(.{
+        .name = "TimeSlowProj tests",
+        .root_module = exe.root_module,
+    });
+    const test_exe_run = b.addRunArtifact(test_exe);
+    const test_exe_step = b.step("test", "Run program unit tests");
+    test_exe_step.dependOn(&test_exe_run.step);
 }

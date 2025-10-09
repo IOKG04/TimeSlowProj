@@ -1,6 +1,7 @@
 const std = @import("std");
 const raylib = @import("raylib");
 
+const collision_logic = @import("collision_logic.zig");
 const GameObject = @import("GameObject.zig");
 const Vec2 = @import("Vec2.zig");
 
@@ -88,41 +89,7 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
         for (game_objects.items[(i + 1)..]) |other| {
             if (other.paused or other.collider == .none or other.collision_layer.isNone()) continue;
 
-            const cinfo_self: GameObject.CollisionInfo, const cinfo_other: GameObject.CollisionInfo = blk: {
-                const layers = self.collision_layer.collidingLayers(other.collision_layer) orelse continue;
-
-                switch (self.collider) {
-                    .circle => |sc_transform| switch (other.collider) {
-                        .circle => |oc_transform| {
-                            const sc_position = self.transform.position.add(sc_transform.position);
-                            const oc_position = other.transform.position.add(oc_transform.position);
-                            const dst = sc_position.subtract(oc_position).len();
-                            const max_dst = (self.transform.scale.x * sc_transform.scale.x + other.transform.scale.x * oc_transform.scale.x) / 2.0;
-                            const overlap = max_dst - dst;
-                            if (overlap <= 0) continue else {
-                                break :blk .{
-                                    .{
-                                        .layers = layers,
-                                        .normal = sc_position.subtract(oc_position).normalizeSafe(),
-                                        .depth = overlap,
-                                    },
-                                    .{
-                                        .layers = layers,
-                                        .normal = oc_position.subtract(sc_position).normalizeSafe(),
-                                        .depth = overlap,
-                                    },
-                                };
-                            }
-                        },
-                        .rectangle => log.err("colliding rectangles not yet implemented", .{}),
-                        .none => unreachable,
-                    },
-                    .rectangle => log.err("colliding rectangles not yet implemented", .{}),
-                    .none => unreachable,
-                }
-
-                continue;
-            };
+            const cinfo_self: GameObject.CollisionInfo, const cinfo_other: GameObject.CollisionInfo = collision_logic.getCollisionInfos(self.*, other.*) orelse continue; // Possibly add `@branchHint(.likely);` to the `continue` branch, considering most objects aren't colliding.
 
             try self.onCollision(self, other, cinfo_self, gpa);
             try other.onCollision(other, self, cinfo_other, gpa);
@@ -153,6 +120,19 @@ pub fn draw() void {
                     raylib.drawCircleV(center.toRaylib(), r, color);
 
                     if (go.draw == .circle_dbg) raylib.drawLineV(center.toRaylib(), center.add(.fromPolar(phi, r * 1.5)).toRaylib(), color);
+                },
+                .rectangle => |color| {
+                    raylib.drawRectanglePro(
+                        .{
+                            .x = go.transform.position.x,
+                            .y = go.transform.position.y,
+                            .width = go.transform.scale.x,
+                            .height = go.transform.scale.y,
+                        },
+                        go.transform.scale.scale(0.5).toRaylib(),
+                        go.transform.rotation * std.math.deg_per_rad,
+                        color,
+                    );
                 },
             }
         }

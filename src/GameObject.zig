@@ -39,6 +39,7 @@ pub const DrawObject = union (enum) {
     texture: *const raylib.Texture2D,
     circle: raylib.Color,
     circle_dbg: raylib.Color,
+    rectangle: raylib.Color,
 };
 pub const DrawOrder = enum {
     invisible,
@@ -82,7 +83,7 @@ pub const CollisionLayer = packed struct {
         const b_int: BackingInteger = @bitCast(b);
         return @bitCast(a_int & b_int);
     }
-    // TODO: possibly make this `inline`
+    /// Possibly make this `inline`.
     pub fn isNone(cl: CollisionLayer) bool {
         const cl_int: BackingInteger = @bitCast(cl);
         return cl_int == 0;
