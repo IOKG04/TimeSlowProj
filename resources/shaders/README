@@ -1,0 +1,15 @@
+SHADER PIPELINE
+
+I'll be honest, I've got barely a clue how to *actually* work with shaders.
+I did play around enough in blender's post-processing though to roughly
+know how to do things in theory. Or in other words: I can come up with a
+pipeline (as I think it's called at least).
+
+1. BLOOMY COLORATION
+
+1) Render scene as pure black and white (or maybe grayscale).
+2) Gaussian-blur that with a very large gaussian.
+3) Add the blurred render to the normal render to get a bloom effect. Keep
+   the maximum brightness as 2.0 though, not 1.0.
+4) Interpolate between black, a tint and white based on the brightness. A
+   brightness of 0.0 is black, 1.0 is the tint, 2.0 is white.
