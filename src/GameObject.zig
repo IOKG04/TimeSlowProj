@@ -11,6 +11,7 @@ const raylib = @import("raylib");
 const Vec2 = @import("Vec2.zig");
 
 const Allocator = std.mem.Allocator;
+const assert = std.debug.assert;
 
 const GameObject = @This();
 
@@ -131,4 +132,22 @@ pub const noop = struct {
     pub fn onCollision(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
         _ = .{ self, other, collision_info, gpa };
     }
+};
+/// Useful functions.
+pub const useful = struct {
+    pub const on_collision = struct {
+        /// Resolves collisions in a "physics" based manner.
+        /// Asserts `self.metadata.movability == .normal`.
+        pub fn physics(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
+            assert(self.metadata.movability == .normal);
+            _ = gpa;
+
+            const movement_factor: f32 = switch (other.metadata.movability) {
+                .bullet => 0.0,
+                .normal => collision_info.depth / 2.0,
+                .immovable, .wall => collision_info.depth,
+            };
+            self.transform.position = self.transform.position.add(collision_info.normal.scale(movement_factor));
+        }
+    };
 };

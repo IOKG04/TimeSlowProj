@@ -1,3 +1,3 @@
 pub const Timer = @import("dbg/Timer.zig");
-pub const WallCircle = @import("dbg/WallCircle.zig");
-pub const WallRectangle = @import("dbg/WallRectangle.zig");
+pub const Wall = @import("dbg/Wall.zig");
+pub const Box = @import("dbg/Box.zig");

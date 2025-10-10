@@ -4,39 +4,34 @@ const GameObject = @import("../../GameObject.zig");
 const Vec2 = @import("../../Vec2.zig");
 
 const Allocator = std.mem.Allocator;
-const assert = std.debug.assert;
 
-const WallCircle = @This();
+const Box = @This();
 
 game_object: GameObject,
 
-pub fn init(gpa: Allocator, position: Vec2, radius: f32) Allocator.Error!*WallCircle {
-    assert(radius > 0.0);
-
-    const outp = try gpa.create(WallCircle);
+pub fn init(gpa: Allocator, position: Vec2) Allocator.Error!*Box {
+    const outp = try gpa.create(Box);
     errdefer gpa.destroy(outp);
 
     outp.* = .{
         .game_object = .{
             .transform = .{
                 .position = position,
-                .scale = .{ .x = radius, .y = radius },
             },
 
             .update = GameObject.noop.update,
             .deinit = deinit,
 
-            .draw = .{ .circle = .dark_brown },
+            .draw = .{ .rectangle = .yellow },
 
-            .collider = .{ .circle = .{} },
+            .collider = .{ .rectangle = .{} },
             .collision_layer = .{
                 .movement = true,
-                .projectiles = true,
             },
-            .onCollision = GameObject.noop.onCollision,
+            .onCollision = GameObject.useful.on_collision.physics,
 
             .metadata = .{
-                .movability = .wall,
+                .movability = .normal,
             },
         },
     };
@@ -45,6 +40,6 @@ pub fn init(gpa: Allocator, position: Vec2, radius: f32) Allocator.Error!*WallCi
 }
 
 fn deinit(go: *GameObject, gpa: Allocator) void {
-    const wall_circle: *WallCircle = @fieldParentPtr("game_object", go);
-    gpa.destroy(wall_circle);
+    const box: *Box = @fieldParentPtr("game_object", go);
+    gpa.destroy(box);
 }
