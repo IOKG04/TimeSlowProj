@@ -90,16 +90,20 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
     if (raylib.isMouseButtonPressed(.right) or raylib.isMouseButtonPressed(.middle)) player.dbg_click_start = internal_world_mouse_pos;
     if (raylib.isMouseButtonReleased(.right)) {
         const radius = player.dbg_click_start.subtract(internal_world_mouse_pos).len() * 2.0;
-        const wall_circle = try objects.dbg.Wall.init(gpa, player.dbg_click_start, .{ .circle = radius });
-        errdefer wall_circle.game_object.deinit(&wall_circle.game_object, gpa);
-        try scene.addGameObject(gpa, &wall_circle.game_object);
+        if (radius > 0.0) {
+            const wall_circle = try objects.dbg.Wall.init(gpa, player.dbg_click_start, .{ .circle = radius });
+            errdefer wall_circle.game_object.deinit(&wall_circle.game_object, gpa);
+            try scene.addGameObject(gpa, &wall_circle.game_object);
+        }
     }
     if (raylib.isMouseButtonReleased(.middle)) {
         const size_signed = player.dbg_click_start.subtract(internal_world_mouse_pos);
-        const center = internal_world_mouse_pos.add(size_signed.scale(0.5));
-        const wall_rectangle = try objects.dbg.Wall.init(gpa, center, .{ .rectangle = size_signed.abs() });
-        errdefer wall_rectangle.game_object.deinit(&wall_rectangle.game_object, gpa);
-        try scene.addGameObject(gpa, &wall_rectangle.game_object);
+        if (size_signed.x != 0.0 and size_signed.y != 0.0) {
+            const center = internal_world_mouse_pos.add(size_signed.scale(0.5));
+            const wall_rectangle = try objects.dbg.Wall.init(gpa, center, .{ .rectangle = size_signed.abs() });
+            errdefer wall_rectangle.game_object.deinit(&wall_rectangle.game_object, gpa);
+            try scene.addGameObject(gpa, &wall_rectangle.game_object);
+        }
     }
 }
 

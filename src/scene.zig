@@ -110,8 +110,28 @@ pub fn draw() void {
             if (go.draw_order != do) continue;
 
             switch (go.draw) {
-                .none => {},
-                .texture => log.err("drawing textures not yet implemented", .{}),
+                .texture => |texture| {
+                    // If there's a problem with texture drawing,
+                    // it's probably somewhere here.
+                    texture.drawPro(
+                        .{
+                            .x = 0,
+                            .y = 0,
+                            .width = @floatFromInt(texture.width),
+                            .height = @floatFromInt(texture.height),
+                        },
+                        .{
+                            .x = go.transform.position.x,
+                            .y = go.transform.position.y,
+                            .width = go.transform.scale.x,
+                            .height = go.transform.scale.y,
+                        },
+                        go.transform.scale.scale(0.5).toRaylib(),
+                        go.transform.rotation * std.math.deg_per_rad,
+                        .white,
+                    );
+                },
+
                 inline .circle, .circle_dbg => |color| {
                     const r = go.transform.scale.x / 2.0;
                     const center = go.transform.position;
@@ -134,6 +154,8 @@ pub fn draw() void {
                         color,
                     );
                 },
+
+                .none => {},
             }
         }
     }

@@ -12,14 +12,18 @@ pub fn main() !void {
     defer { if (!using_c_allocator) _ = dbg_allocator.deinit(); }
     const gpa = if (using_c_allocator) std.heap.c_allocator else dbg_allocator.allocator();
 
+    var arena_allocator = std.heap.ArenaAllocator.init(gpa);
+    defer arena_allocator.deinit();
+    const arena = arena_allocator.allocator();
+
     log.info("initializing game", .{});
 
-    try game.init(gpa);
-    defer game.close(gpa);
+    try game.init(gpa, arena);
+    defer game.close(gpa, arena);
 
     log.info("running game", .{});
 
-    try game.run(gpa);
+    try game.run(gpa, arena);
 }
 
 comptime {

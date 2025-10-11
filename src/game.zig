@@ -2,9 +2,10 @@ const std = @import("std");
 const raylib = @import("raylib");
 const options = @import("options");
 
-const scene = @import("scene.zig");
 const GameObject = @import("GameObject.zig");
 const objects = @import("objects.zig");
+const scene = @import("scene.zig");
+const TextureManager = @import("TextureManager.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -16,14 +17,19 @@ pub var camera: raylib.Camera2D = .{
     .rotation = 0.0,
     .zoom = @as(f32, @floatFromInt(options.window_h)) / 8.0,
 };
+pub var texture_manager: TextureManager = undefined;
 
-pub fn init(gpa: Allocator) !void {
+pub fn init(gpa: Allocator, arena: Allocator) !void {
     // init raylib
     raylib.initWindow(options.window_w, options.window_h, "TimeSlowProj");
     while (!raylib.isWindowReady()) {
         std.Thread.sleep(10 * std.time.ns_per_ms);
     }
     raylib.setTargetFPS(options.target_fps);
+
+    // init `texture_manager`
+    texture_manager = .{ .arena = arena };
+    errdefer texture_manager.deinit(gpa);
 
     // set/load/init initial game scene
     errdefer scene.deinit(gpa);
@@ -34,12 +40,17 @@ pub fn init(gpa: Allocator) !void {
     }
 }
 
-pub fn close(gpa: Allocator) void {
+pub fn close(gpa: Allocator, arena: Allocator) void {
+    _ = arena;
+
+    texture_manager.deinit(gpa);
     scene.deinit(gpa);
     raylib.closeWindow();
 }
 
-pub fn run(gpa: Allocator) !void {
+pub fn run(gpa: Allocator, arena: Allocator) !void {
+    _ = arena;
+
     while (!raylib.windowShouldClose()) {
         const dt = raylib.getFrameTime();
         try scene.update(gpa, dt, player.game_object.transform.position, -0.1);

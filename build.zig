@@ -7,11 +7,13 @@ pub fn build(b: *std.Build) void {
     const window_w = b.option(u31, "window_w", "Width of the games window") orelse 600;
     const window_h = b.option(u31, "window_h", "Height of the games window") orelse 360;
     const target_fps = b.option(u31, "target_fps", "Maximum FPS the game renders at") orelse 60;
+    const texture_path = "resources/textures";
 
     const options = b.addOptions();
     options.addOption(u31, "window_w", window_w);
     options.addOption(u31, "window_h", window_h);
     options.addOption(u31, "target_fps", target_fps);
+    options.addOption([]const u8, "texture_path", texture_path);
 
     const raylib_dep = b.dependency("raylib_zig", .{
         .target = target,
@@ -47,4 +49,10 @@ pub fn build(b: *std.Build) void {
     const test_exe_run = b.addRunArtifact(test_exe);
     const test_exe_step = b.step("test", "Run program unit tests");
     test_exe_step.dependOn(&test_exe_run.step);
+
+    b.installDirectory(.{
+        .source_dir = b.path("resources"),
+        .install_dir = .bin,
+        .install_subdir = "resources",
+    });
 }
