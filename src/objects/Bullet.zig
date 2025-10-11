@@ -15,7 +15,7 @@ game_object: GameObject,
 velocity: f32,
 timer: parts.Timer,
 
-pub fn init(gpa: Allocator, velocity: f32, lifetime: f32, position: Vec2, rotation: f32) Allocator.Error!*Bullet {
+pub fn init(gpa: Allocator, velocity: f32, lifetime: f32, position: Vec2, rotation: f32) GameObject.UpdateError!*Bullet {
     const outp = try gpa.create(Bullet);
     errdefer gpa.destroy(outp);
 
@@ -45,6 +45,8 @@ pub fn init(gpa: Allocator, velocity: f32, lifetime: f32, position: Vec2, rotati
         .velocity = velocity,
         .timer = .init(lifetime, false),
     };
+
+    try scene.addGameObject(gpa, &outp.game_object);
 
     return outp;
 }

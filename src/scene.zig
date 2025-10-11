@@ -1,5 +1,6 @@
 const std = @import("std");
 const raylib = @import("raylib");
+const options = @import("options");
 
 const collision_logic = @import("collision_logic.zig");
 const GameObject = @import("GameObject.zig");
@@ -50,6 +51,22 @@ pub fn deinit(gpa: Allocator) void {
 /// if it's zero, they'll all move the same,
 /// if it's negative, they'll move slower.
 pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_factor: f32) UpdateError!void {
+    // Add game objects first, then remove them. This
+    // should keep it from doing weird behaviour if
+    // an object is both added and removed during the
+    // same frame.
+    if (to_add.items.len >= 1) {
+        errdefer {
+            for (to_add.items) |go| {
+                go.deinit(go, gpa);
+            }
+        }
+        try game_objects.appendSlice(gpa, to_add.items);
+        log.debug("added game_object {d} - {d}", .{game_objects.items.len - to_add.items.len, game_objects.items.len - 1});
+    }
+    to_add.deinit(gpa);
+    to_add = .empty;
+
     outer_remove: for (to_remove.items) |tr| {
         const idx = blk: {
             for (game_objects.items, 0..) |go, i| {
@@ -63,18 +80,6 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
     }
     to_remove.deinit(gpa);
     to_remove = .empty;
-
-    if (to_add.items.len >= 1) {
-        errdefer {
-            for (to_add.items) |go| {
-                go.deinit(go, gpa);
-            }
-        }
-        try game_objects.appendSlice(gpa, to_add.items);
-        log.debug("added game_object {d} - {d}", .{game_objects.items.len - to_add.items.len, game_objects.items.len - 1});
-    }
-    to_add.deinit(gpa);
-    to_add = .empty;
 
     for (game_objects.items) |go| {
         if (go.paused) continue;
@@ -157,6 +162,33 @@ pub fn draw() void {
 
                 .none => {},
             }
+        }
+    }
+}
+pub fn drawColliders() void {
+    if (!options.draw_colliders) comptime unreachable; // This function doesn't need to exist if the option is off.
+
+    for (game_objects.items) |go| {
+        switch (go.collider) {
+            .circle => |circle| {
+                const center = circle.position.scale(go.transform.scale.x).add(go.transform.position);
+                const radius = circle.scale.x * go.transform.scale.x / 2.0;
+                raylib.drawCircleLinesV(center.toRaylib(), radius, .green);
+            },
+            .rectangle => |rectangle| {
+                const center = rectangle.position.multiply(go.transform.scale).add(go.transform.position);
+                const size = rectangle.scale.multiply(go.transform.scale);
+                const angle = rectangle.rotation + go.transform.rotation;
+                const tr = center.add(size.multiply(.{ .x = 0.5, .y = 0.5}).rotate(angle));
+                const br = center.add(size.multiply(.{ .x = 0.5, .y = -0.5}).rotate(angle));
+                const tl = center.add(size.multiply(.{ .x = -0.5, .y = 0.5}).rotate(angle));
+                const bl = center.add(size.multiply(.{ .x = -0.5, .y = -0.5}).rotate(angle));
+                raylib.drawLineV(tr.toRaylib(), br.toRaylib(), .green);
+                raylib.drawLineV(tr.toRaylib(), tl.toRaylib(), .green);
+                raylib.drawLineV(bl.toRaylib(), br.toRaylib(), .green);
+                raylib.drawLineV(bl.toRaylib(), tl.toRaylib(), .green);
+            },
+            .none => {},
         }
     }
 }

@@ -1,6 +1,8 @@
 const std = @import("std");
 
+const game = @import("../../game.zig");
 const GameObject = @import("../../GameObject.zig");
+const scene = @import("../../scene.zig");
 const Vec2 = @import("../../Vec2.zig");
 
 const Allocator = std.mem.Allocator;
@@ -9,7 +11,7 @@ const Box = @This();
 
 game_object: GameObject,
 
-pub fn init(gpa: Allocator, position: Vec2) Allocator.Error!*Box {
+pub fn init(gpa: Allocator, position: Vec2) GameObject.UpdateError!*Box {
     const outp = try gpa.create(Box);
     errdefer gpa.destroy(outp);
 
@@ -22,7 +24,12 @@ pub fn init(gpa: Allocator, position: Vec2) Allocator.Error!*Box {
             .update = GameObject.noop.update,
             .deinit = deinit,
 
-            .draw = .{ .rectangle = .yellow },
+            .draw = .{
+                .texture = game.texture_manager.load(gpa, "box") catch |err| switch (err) {
+                    error.OutOfMemory => return error.OutOfMemory,
+                    else => return error.GenericError,
+                },
+            },
 
             .collider = .{ .rectangle = .{} },
             .collision_layer = .{
@@ -35,6 +42,8 @@ pub fn init(gpa: Allocator, position: Vec2) Allocator.Error!*Box {
             },
         },
     };
+
+    try scene.addGameObject(gpa, &outp.game_object);
 
     return outp;
 }

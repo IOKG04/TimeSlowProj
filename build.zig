@@ -8,12 +8,14 @@ pub fn build(b: *std.Build) void {
     const window_h = b.option(u31, "window_h", "Height of the games window") orelse 360;
     const target_fps = b.option(u31, "target_fps", "Maximum FPS the game renders at") orelse 60;
     const texture_path = "resources/textures";
+    const draw_colliders = b.option(bool, "draw_colliders", "Draw collider boundaries") orelse false;
 
     const options = b.addOptions();
     options.addOption(u31, "window_w", window_w);
     options.addOption(u31, "window_h", window_h);
     options.addOption(u31, "target_fps", target_fps);
     options.addOption([]const u8, "texture_path", texture_path);
+    options.addOption(bool, "draw_colliders", draw_colliders);
 
     const raylib_dep = b.dependency("raylib_zig", .{
         .target = target,
@@ -52,6 +54,10 @@ pub fn build(b: *std.Build) void {
 
     b.installDirectory(.{
         .source_dir = b.path("resources"),
+        .exclude_extensions = &.{
+            "README",
+            "~",
+        },
         .install_dir = .bin,
         .install_subdir = "resources",
     });

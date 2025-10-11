@@ -54,6 +54,9 @@ pub const Collider = union (enum) {
     circle: Transform,
     /// Transform contains offset and size multiplier from containing GameObject.
     rectangle: Transform,
+
+    // TODO: `rounded_rectangle`.
+
     // As an example for the transforms in colliders,
     // lets say we have an object with the transform
     // .{

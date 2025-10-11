@@ -17,7 +17,7 @@ game_object: GameObject,
 
 dbg_click_start: Vec2 = undefined,
 
-pub fn init(gpa: Allocator) Allocator.Error!*Player {
+pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
     const outp = try gpa.create(Player);
     errdefer gpa.destroy(outp);
 
@@ -41,6 +41,8 @@ pub fn init(gpa: Allocator) Allocator.Error!*Player {
             },
         },
     };
+
+    try scene.addGameObject(gpa, &outp.game_object);
 
     return outp;
 }
@@ -68,41 +70,41 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
             .x = @cos(transform.rotation) * (transform.scale.x / 2.0 + objects.Bullet.size),
             .y = @sin(transform.rotation) * (transform.scale.x / 2.0 + objects.Bullet.size),
         });
-        const bullet = try objects.Bullet.init(gpa, velocity * 2.0, 5.0, bullet_position, transform.rotation);
-        errdefer bullet.game_object.deinit(&bullet.game_object, gpa);
-        try scene.addGameObject(gpa, &bullet.game_object);
+        _ = try objects.Bullet.init(gpa, velocity * 2.0, 5.0, bullet_position, transform.rotation);
+        //errdefer bullet.game_object.deinit(&bullet.game_object, gpa);
+        //try scene.addGameObject(gpa, &bullet.game_object);
     }
 
     // The following code is only for debugging purposes
     // and to be removed whenever I get level loading to work.
 
     if (raylib.isKeyPressed(.space)) {
-        const timer = try objects.dbg.Timer.init(gpa, 1.0, transform.position);
-        errdefer timer.game_object.deinit(&timer.game_object, gpa);
-        try scene.addGameObject(gpa, &timer.game_object);
+        _ = try objects.dbg.Timer.init(gpa, 1.0, transform.position);
+        //errdefer timer.game_object.deinit(&timer.game_object, gpa);
+        //try scene.addGameObject(gpa, &timer.game_object);
     }
     if (raylib.isKeyPressed(.kp_add)) {
-        const box = try objects.dbg.Box.init(gpa, internal_world_mouse_pos);
-        errdefer box.game_object.deinit(&box.game_object, gpa);
-        try scene.addGameObject(gpa, &box.game_object);
+        _ = try objects.dbg.Box.init(gpa, internal_world_mouse_pos);
+        //errdefer box.game_object.deinit(&box.game_object, gpa);
+        //try scene.addGameObject(gpa, &box.game_object);
     }
 
     if (raylib.isMouseButtonPressed(.right) or raylib.isMouseButtonPressed(.middle)) player.dbg_click_start = internal_world_mouse_pos;
     if (raylib.isMouseButtonReleased(.right)) {
         const radius = player.dbg_click_start.subtract(internal_world_mouse_pos).len() * 2.0;
         if (radius > 0.0) {
-            const wall_circle = try objects.dbg.Wall.init(gpa, player.dbg_click_start, .{ .circle = radius });
-            errdefer wall_circle.game_object.deinit(&wall_circle.game_object, gpa);
-            try scene.addGameObject(gpa, &wall_circle.game_object);
+            _ = try objects.dbg.Wall.init(gpa, player.dbg_click_start, .{ .circle = radius });
+            //errdefer wall_circle.game_object.deinit(&wall_circle.game_object, gpa);
+            //try scene.addGameObject(gpa, &wall_circle.game_object);
         }
     }
     if (raylib.isMouseButtonReleased(.middle)) {
         const size_signed = player.dbg_click_start.subtract(internal_world_mouse_pos);
         if (size_signed.x != 0.0 and size_signed.y != 0.0) {
             const center = internal_world_mouse_pos.add(size_signed.scale(0.5));
-            const wall_rectangle = try objects.dbg.Wall.init(gpa, center, .{ .rectangle = size_signed.abs() });
-            errdefer wall_rectangle.game_object.deinit(&wall_rectangle.game_object, gpa);
-            try scene.addGameObject(gpa, &wall_rectangle.game_object);
+            _ = try objects.dbg.Wall.init(gpa, center, .{ .rectangle = size_signed.abs() });
+            //errdefer wall_rectangle.game_object.deinit(&wall_rectangle.game_object, gpa);
+            //try scene.addGameObject(gpa, &wall_rectangle.game_object);
         }
     }
 }

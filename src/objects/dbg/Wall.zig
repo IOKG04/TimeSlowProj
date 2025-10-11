@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const GameObject = @import("../../GameObject.zig");
+const scene = @import("../../scene.zig");
 const Vec2 = @import("../../Vec2.zig");
 
 const Allocator = std.mem.Allocator;
@@ -10,7 +11,7 @@ const Wall = @This();
 
 game_object: GameObject,
 
-pub fn init(gpa: Allocator, position: Vec2, shape: Shape) Allocator.Error!*Wall {
+pub fn init(gpa: Allocator, position: Vec2, shape: Shape) GameObject.UpdateError!*Wall {
     switch (shape) {
         .circle => |r| assert(r > 0.0),
         .rectangle => |size| assert(size.x > 0.0 and size.y > 0.0),
@@ -52,6 +53,8 @@ pub fn init(gpa: Allocator, position: Vec2, shape: Shape) Allocator.Error!*Wall 
             },
         },
     };
+
+    try scene.addGameObject(gpa, &outp.game_object);
 
     return outp;
 }

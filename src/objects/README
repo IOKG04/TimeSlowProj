@@ -1,0 +1,10 @@
+OBJECTS
+
+These are all the individual objects that might appear in the game.
+
+All of these will probably have an `init` function, so here I will
+quickly describe what that does:
+1) Create a new instance of the object on the heap.
+2) Initialize that instance.
+3) Add it to the scene.
+4) Return the instance.

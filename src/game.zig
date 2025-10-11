@@ -35,8 +35,6 @@ pub fn init(gpa: Allocator, arena: Allocator) !void {
     errdefer scene.deinit(gpa);
     {
         player = try .init(gpa);
-        errdefer player.game_object.deinit(&player.game_object, gpa);
-        try scene.addGameObject(gpa, &player.game_object);
     }
 }
 
@@ -60,6 +58,7 @@ pub fn run(gpa: Allocator, arena: Allocator) !void {
             raylib.clearBackground(.black);
             camera.begin();
                 scene.draw();
+                if (options.draw_colliders) scene.drawColliders();
             camera.end();
             raylib.drawFPS(0, 0);
         raylib.endDrawing();

@@ -1,3 +1,5 @@
+//! Lazily loads textures as they're needed. Does not unload textures.
+//!
 //! This will always look at `options.texture_path/[name].png` to find the textures.
 
 const std = @import("std");
