@@ -8,40 +8,61 @@ const Vec2 = @import("Vec2.zig");
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
+const assert = std.debug.assert;
 
 const log = @import("main.zig").log;
 
-var game_objects: ArrayList(*GameObject) = .empty;
-var to_add: ArrayList(*GameObject) = .empty;
-var to_remove: ArrayList(*GameObject) = .empty;
+var game_objects: ArrayList(RemovableGameObject) = .empty;
+var to_add: ArrayList(RemovableGameObject) = .empty;
 
 /// Scene takes ownership of `game_object`.
 /// Will only take effect when `update` is called.
+///
+/// Adding the same game object twice is IB.
 pub fn addGameObject(gpa: Allocator, game_object: *GameObject) Allocator.Error!void {
-    try to_add.append(gpa, game_object);
+    assert(not_owned: { // This will hopefully be optimized out..
+        for (to_add.items) |rgo| {
+            if (rgo.game_object == game_object) break :not_owned false;
+        }
+        for (game_objects.items) |rgo| {
+            if (rgo.game_object == game_object) break :not_owned false;
+        }
+        break :not_owned true;
+    });
+    try to_add.append(gpa, .{ .game_object = game_object });
 }
-/// If scene owns `game_object`, it will also be removed.
+/// If scene owns `game_object`, it will be removed.
 /// Will only take effect when `update` is called.
-pub fn removeGameObject(gpa: Allocator, game_object: *GameObject) Allocator.Error!void {
-    try to_remove.append(gpa, game_object);
+pub fn removeGameObject(game_object: *GameObject) void {
+    for (game_objects.items) |*rgo| {
+        if (rgo.game_object == game_object) {
+            rgo.removed = true;
+            return;
+        }
+    }
+    for (to_add.items) |*rgo| {
+        if (rgo.game_object == game_object) {
+            rgo.removed = true;
+            return;
+        }
+    }
 }
 
 /// Deinitializes all game objects and the list containing them.
 pub fn deinit(gpa: Allocator) void {
-    for (game_objects.items) |go| {
+    for (game_objects.items) |rgo| {
+        const go = rgo.game_object;
         go.deinit(go, gpa);
     }
     game_objects.deinit(gpa);
     game_objects = .empty;
 
-    for (to_add.items) |go| {
+    for (to_add.items) |rgo| {
+        const go = rgo.game_object;
         go.deinit(go, gpa);
     }
     to_add.deinit(gpa);
     to_add = .empty;
-
-    to_remove.deinit(gpa);
-    to_remove = .empty;
 }
 
 /// Updates scene and game objects.
@@ -57,7 +78,8 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
     // same frame.
     if (to_add.items.len >= 1) {
         errdefer {
-            for (to_add.items) |go| {
+            for (to_add.items) |rgo| {
+                const go = rgo.game_object;
                 go.deinit(go, gpa);
             }
         }
@@ -67,21 +89,22 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
     to_add.deinit(gpa);
     to_add = .empty;
 
-    outer_remove: for (to_remove.items) |tr| {
-        const idx = blk: {
-            for (game_objects.items, 0..) |go, i| {
-                if (go == tr) break :blk i;
+    { // remove removed objects
+        var i: usize = 0;
+        while (i < game_objects.items.len) {
+            const rgo = game_objects.items[i];
+            if (!rgo.removed) {
+                i += 1;
+                continue;
             }
-            continue :outer_remove;
-        };
-        const removed = game_objects.swapRemove(idx);
-        removed.deinit(removed, gpa);
-        log.debug("removed game_object {d}", .{idx});
+            rgo.game_object.deinit(rgo.game_object, gpa);
+            _ = game_objects.swapRemove(i);
+            log.debug("removed game_object {d}", .{i});
+        }
     }
-    to_remove.deinit(gpa);
-    to_remove = .empty;
 
-    for (game_objects.items) |go| {
+    for (game_objects.items) |rgo| {
+        const go = rgo.game_object;
         if (go.paused) continue;
         const position = go.transform.position;
         const distance_from_cog = position.subtract(center_of_gravity).len();
@@ -89,9 +112,11 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
         try go.update(go, gpa, dt * time_stretch);
     }
 
-    for (game_objects.items, 0..) |self, i| {
+    for (game_objects.items, 0..) |self_rgo, i| {
+        const self = self_rgo.game_object;
         if (self.paused or self.collider == .none or self.collision_layer.isNone()) continue;
-        for (game_objects.items[(i + 1)..]) |other| {
+        for (game_objects.items[(i + 1)..]) |other_rgo| {
+            const other = other_rgo.game_object;
             if (other.paused or other.collider == .none or other.collision_layer.isNone()) continue;
 
             const cinfo_self: GameObject.CollisionInfo, const cinfo_other: GameObject.CollisionInfo = collision_logic.getCollisionInfos(self.*, other.*) orelse continue; // Possibly add `@branchHint(.likely);` to the `continue` branch, considering most objects aren't colliding.
@@ -111,13 +136,12 @@ pub fn draw() void {
         .foreground,
     };
     for (draw_order) |do| {
-        for (game_objects.items) |go| {
+        for (game_objects.items) |rgo| {
+            const go = rgo.game_object;
             if (go.draw_order != do) continue;
 
             switch (go.draw) {
                 .texture => |texture| {
-                    // If there's a problem with texture drawing,
-                    // it's probably somewhere here.
                     texture.drawPro(
                         .{
                             .x = 0,
@@ -133,6 +157,31 @@ pub fn draw() void {
                         },
                         go.transform.scale.scale(0.5).toRaylib(),
                         go.transform.rotation * std.math.deg_per_rad,
+                        .white,
+                    );
+                },
+                .texture_offset => |texture_offset| {
+                    const texture = texture_offset.texture;
+                    const transform: GameObject.Transform = .{
+                        .position = texture_offset.offset.multiply(go.transform.scale).rotate(go.transform.rotation).add(go.transform.position),
+                        .rotation = go.transform.rotation,
+                        .scale = go.transform.scale,
+                    };
+                    texture.drawPro(
+                        .{
+                            .x = 0,
+                            .y = 0,
+                            .width = @floatFromInt(texture.width),
+                            .height = @floatFromInt(texture.height),
+                        },
+                        .{
+                            .x = transform.position.x,
+                            .y = transform.position.y,
+                            .width = transform.scale.x,
+                            .height = transform.scale.y,
+                        },
+                        transform.scale.scale(0.5).toRaylib(),
+                        transform.rotation * std.math.deg_per_rad,
                         .white,
                     );
                 },
@@ -168,7 +217,8 @@ pub fn draw() void {
 pub fn drawColliders() void {
     if (!options.draw_colliders) comptime unreachable; // This function doesn't need to exist if the option is off.
 
-    for (game_objects.items) |go| {
+    for (game_objects.items) |rgo| {
+        const go = rgo.game_object;
         switch (go.collider) {
             .circle => |circle| {
                 const center = circle.position.scale(go.transform.scale.x).add(go.transform.position);
@@ -176,13 +226,13 @@ pub fn drawColliders() void {
                 raylib.drawCircleLinesV(center.toRaylib(), radius, .green);
             },
             .rectangle => |rectangle| {
-                const center = rectangle.position.multiply(go.transform.scale).add(go.transform.position);
+                const center = rectangle.position.multiply(go.transform.scale).rotate(go.transform.rotation).add(go.transform.position);
                 const size = rectangle.scale.multiply(go.transform.scale);
-                const angle = rectangle.rotation + go.transform.rotation;
-                const tr = center.add(size.multiply(.{ .x = 0.5, .y = 0.5}).rotate(angle));
-                const br = center.add(size.multiply(.{ .x = 0.5, .y = -0.5}).rotate(angle));
-                const tl = center.add(size.multiply(.{ .x = -0.5, .y = 0.5}).rotate(angle));
-                const bl = center.add(size.multiply(.{ .x = -0.5, .y = -0.5}).rotate(angle));
+                const angle = go.transform.rotation;
+                const tr = center.add(size.multiply(.{ .x = 0.5, .y = 0.5 }).rotate(angle));
+                const br = center.add(size.multiply(.{ .x = 0.5, .y = -0.5 }).rotate(angle));
+                const tl = center.add(size.multiply(.{ .x = -0.5, .y = 0.5 }).rotate(angle));
+                const bl = center.add(size.multiply(.{ .x = -0.5, .y = -0.5 }).rotate(angle));
                 raylib.drawLineV(tr.toRaylib(), br.toRaylib(), .green);
                 raylib.drawLineV(tr.toRaylib(), tl.toRaylib(), .green);
                 raylib.drawLineV(bl.toRaylib(), br.toRaylib(), .green);
@@ -192,3 +242,8 @@ pub fn drawColliders() void {
         }
     }
 }
+
+const RemovableGameObject = struct {
+    game_object: *GameObject,
+    removed: bool = false,
+};

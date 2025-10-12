@@ -8,6 +8,7 @@
 const std = @import("std");
 const raylib = @import("raylib");
 
+const scene = @import("scene.zig");
 const Vec2 = @import("Vec2.zig");
 
 const Allocator = std.mem.Allocator;
@@ -28,16 +29,36 @@ collider: Collider = .none,
 collision_layer: CollisionLayer = .{},
 onCollision: *const fn (self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void = noOnCollision,
 
-metadata: Metadata,
+metadata: Metadata = .{},
 
 pub const Transform = struct {
     position: Vec2 = .zero,
     rotation: f32 = 0.0,
     scale: Vec2 = .one,
+    pub fn toSimple(t: Transform) SimpleTransform {
+        return .{
+            .position = t.position,
+            .scale = t.scale,
+        };
+    }
+};
+pub const SimpleTransform = struct {
+    position: Vec2 = .zero,
+    scale: Vec2 = .one,
+    pub fn toTransform(st: SimpleTransform) Transform {
+        return .{
+            .position = st.position,
+            .scale = st.scale,
+        };
+    }
 };
 pub const DrawObject = union (enum) {
     none: void,
     texture: *const raylib.Texture2D,
+    texture_offset: struct {
+        texture: *const raylib.Texture2D,
+        offset: Vec2,
+    },
     circle: raylib.Color,
     circle_dbg: raylib.Color,
     rectangle: raylib.Color,
@@ -51,28 +72,11 @@ pub const DrawOrder = enum {
 pub const Collider = union (enum) {
     none: void,
     /// Transform contains offset and size multiplier from containing GameObject.
-    circle: Transform,
+    circle: SimpleTransform,
     /// Transform contains offset and size multiplier from containing GameObject.
-    rectangle: Transform,
+    rectangle: SimpleTransform,
 
     // TODO: `rounded_rectangle`.
-
-    // As an example for the transforms in colliders,
-    // lets say we have an object with the transform
-    // .{
-    //     .position = .{ 0, 1 },
-    //     .rotation = -pi / 2,
-    //     .scale = .{ 2, 1 },
-    // }
-    // and a rectangle collider with
-    // .{
-    //     .position = .{ 0, -1 },
-    //     .rotation = pi / 2,
-    //     .scale = .{ 1, 4 },
-    // }
-    // then the collider's center is at .{ 0, 0 } (additive),
-    // it's rotation is pi / 4 (additive),
-    // and it's side-lengths are 2 and 4 (multiplicative).
 };
 pub const CollisionLayer = packed struct {
     movement: bool = false,
@@ -114,7 +118,8 @@ pub const Metadata = struct {
     } = .normal,
 };
 pub const UpdateError = error {
-    GenericError,
+    Generic,
+    LoadTexture,
 } || Allocator.Error;
 
 /// The default collision function.
@@ -151,6 +156,11 @@ pub const useful = struct {
                 .immovable, .wall => collision_info.depth,
             };
             self.transform.position = self.transform.position.add(collision_info.normal.scale(movement_factor));
+        }
+        /// Destroys `self`.
+        pub fn selfDestruct(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
+            _ = .{ other, collision_info, gpa };
+            scene.removeGameObject(self);
         }
     };
 };

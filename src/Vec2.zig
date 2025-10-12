@@ -53,6 +53,13 @@ pub fn abs(v: Vec2) Vec2 {
     };
 }
 
+pub fn maxDimension(v: Vec2) f32 {
+    return @max(v.x, v.y);
+}
+pub fn minDimension(v: Vec2) f32 {
+    return @min(v.x, v.y);
+}
+
 pub fn lenSq(v: Vec2) f32 {
     return v.x * v.x + v.y * v.y;
 }

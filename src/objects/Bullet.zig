@@ -36,7 +36,7 @@ pub fn init(gpa: Allocator, velocity: f32, lifetime: f32, position: Vec2, rotati
             .collision_layer = .{
                 .projectiles = true,
             },
-            .onCollision = onCollision,
+            .onCollision = GameObject.useful.on_collision.selfDestruct,
 
             .metadata = .{
                 .movability = .bullet,
@@ -47,28 +47,24 @@ pub fn init(gpa: Allocator, velocity: f32, lifetime: f32, position: Vec2, rotati
     };
 
     try scene.addGameObject(gpa, &outp.game_object);
+    errdefer scene.removeGameObject(*outp.game_object);
 
     return outp;
 }
 
 fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void {
+    _ = gpa;
     const bullet: *Bullet = @fieldParentPtr("game_object", go);
     const transform = &bullet.game_object.transform;
 
     transform.position = transform.position.add(Vec2.fromPolar(transform.rotation, bullet.velocity).scale(dt));
 
     if (bullet.timer.update(dt)) {
-        try scene.removeGameObject(gpa, go);
+        scene.removeGameObject(go);
     }
 }
 
 fn deinit(go: *GameObject, gpa: Allocator) void {
     const bullet: *Bullet = @fieldParentPtr("game_object", go);
     gpa.destroy(bullet);
-}
-
-fn onCollision(self: *GameObject, other: *const GameObject, collision_info: GameObject.CollisionInfo, gpa: Allocator) GameObject.UpdateError!void {
-    _ = other;
-    _ = collision_info;
-    try scene.removeGameObject(gpa, self);
 }

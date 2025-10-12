@@ -40,7 +40,7 @@ pub fn loadAssumeUnloaded(tm: *TextureManager, gpa: Allocator, name: []const u8)
     defer gpa.free(path);
 
     const texture = try tm.arena.create(Texture2D);
-    texture.* = try raylib.loadTexture(path);
+    texture.* = raylib.loadTexture(path) catch return error.LoadTexture;
     errdefer texture.*.unload();
     try tm.loaded.put(gpa, name, texture);
 
@@ -49,4 +49,6 @@ pub fn loadAssumeUnloaded(tm: *TextureManager, gpa: Allocator, name: []const u8)
     return texture;
 }
 
-pub const LoadError = Allocator.Error || raylib.RaylibError;
+pub const LoadError = error {
+    LoadTexture,
+} || Allocator.Error;

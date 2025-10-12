@@ -24,12 +24,7 @@ pub fn init(gpa: Allocator, position: Vec2) GameObject.UpdateError!*Box {
             .update = GameObject.noop.update,
             .deinit = deinit,
 
-            .draw = .{
-                .texture = game.texture_manager.load(gpa, "box") catch |err| switch (err) {
-                    error.OutOfMemory => return error.OutOfMemory,
-                    else => return error.GenericError,
-                },
-            },
+            .draw = .{ .texture = try game.texture_manager.load(gpa, "box") },
 
             .collider = .{ .rectangle = .{} },
             .collision_layer = .{
@@ -44,6 +39,7 @@ pub fn init(gpa: Allocator, position: Vec2) GameObject.UpdateError!*Box {
     };
 
     try scene.addGameObject(gpa, &outp.game_object);
+    errdefer scene.removeGameObject(*outp.game_object);
 
     return outp;
 }

@@ -40,6 +40,7 @@ pub fn init(gpa: Allocator, interval: f32, position: Vec2) GameObject.UpdateErro
     };
 
     try scene.addGameObject(gpa, &outp.game_object);
+    errdefer scene.removeGameObject(*outp.game_object);
 
     return outp;
 }

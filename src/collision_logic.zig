@@ -56,8 +56,8 @@ fn circleCircleCollision(a: GameObject, b: GameObject, layers: CollisionLayer) ?
     const a_circle = a.collider.circle;
     const b_circle = b.collider.circle;
 
-    const a_center = a_circle.position.multiply(a.transform.scale).add(a.transform.position);
-    const b_center = b_circle.position.multiply(b.transform.scale).add(b.transform.position);
+    const a_center = a_circle.position.multiply(a.transform.scale).rotate(a.transform.rotation).add(a.transform.position);
+    const b_center = b_circle.position.multiply(b.transform.scale).rotate(b.transform.rotation).add(b.transform.position);
     const distance = a_center.subtract(b_center).len();
 
     const a_radius = a_circle.scale.x * a.transform.scale.x / 2.0;
@@ -85,11 +85,11 @@ fn circleRectangleCollision(c: GameObject, r: GameObject, layers: CollisionLayer
     const c_circle = c.collider.circle;
     const r_rectangle = r.collider.rectangle;
 
-    const c_center = c_circle.position.multiply(c.transform.scale).add(c.transform.position);
+    const c_center = c_circle.position.multiply(c.transform.scale).rotate(c.transform.rotation).add(c.transform.position);
     const c_radius = c_circle.scale.x * c.transform.scale.x / 2.0;
-    const r_center = r_rectangle.position.multiply(r.transform.scale).add(r.transform.position);
+    const r_center = r_rectangle.position.multiply(r.transform.scale).rotate(r.transform.rotation).add(r.transform.position);
     const r_size = r_rectangle.scale.multiply(r.transform.scale);
-    const r_angle = r_rectangle.rotation + r.transform.rotation;
+    const r_angle = r.transform.rotation;
 
     const r_center_rotated = r_center.rotateAround(c_center, -r_angle);
 
@@ -140,12 +140,12 @@ fn rectangleRectangleCollision(a: GameObject, b: GameObject, layers: CollisionLa
     const a_rectangle = a.collider.rectangle;
     const b_rectangle = b.collider.rectangle;
 
-    const a_center = a_rectangle.position.multiply(a.transform.scale).add(a.transform.position);
-    const b_center = b_rectangle.position.multiply(b.transform.scale).add(b.transform.position);
+    const a_center = a_rectangle.position.multiply(a.transform.scale).rotate(a.transform.rotation).add(a.transform.position);
+    const b_center = b_rectangle.position.multiply(b.transform.scale).rotate(b.transform.rotation).add(b.transform.position);
     const a_size = a_rectangle.scale.multiply(a.transform.scale);
     const b_size = b_rectangle.scale.multiply(b.transform.scale);
-    const a_angle = a_rectangle.rotation + a.transform.rotation;
-    const b_angle = b_rectangle.rotation + b.transform.rotation;
+    const a_angle = a.transform.rotation;
+    const b_angle = b.transform.rotation;
 
     const a_tr = a_center.add(a_size.multiply(.{ .x = 0.5, .y = 0.5 }).rotate(a_angle));
     const a_br = a_center.add(a_size.multiply(.{ .x = 0.5, .y = -0.5 }).rotate(a_angle));

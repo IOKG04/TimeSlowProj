@@ -15,6 +15,8 @@ const velocity = 2.5;
 
 game_object: GameObject,
 
+gun: *objects.Gun,
+
 dbg_click_start: Vec2 = undefined,
 
 pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
@@ -27,7 +29,7 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
             .deinit = deinit,
 
             .draw_order = .foreground,
-            .draw = .{ .circle_dbg = .red },
+            .draw = .{ .circle = .white },
 
             .collider = .{ .circle = .{} },
             .collision_layer = .{
@@ -40,9 +42,13 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
                 .movability = .normal,
             },
         },
+        .gun = undefined,
     };
+    outp.gun = try objects.Gun.init(gpa, &outp.game_object);
+    errdefer scene.removeGameObject(&outp.gun.game_object);
 
     try scene.addGameObject(gpa, &outp.game_object);
+    errdefer scene.removeGameObject(&outp.game_object);
 
     return outp;
 }
@@ -63,16 +69,11 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
     const world_mouse_pos = raylib.getScreenToWorld2D(mouse_pos, game.camera);
     const internal_world_mouse_pos: Vec2 = .fromRaylib(world_mouse_pos);
     const phi = internal_world_mouse_pos.subtract(transform.position).angle();
-    transform.rotation = phi;
+
+    player.gun.target_angle = phi;
 
     if (raylib.isMouseButtonPressed(.left)) {
-        const bullet_position = transform.position.add(.{
-            .x = @cos(transform.rotation) * (transform.scale.x / 2.0 + objects.Bullet.size),
-            .y = @sin(transform.rotation) * (transform.scale.x / 2.0 + objects.Bullet.size),
-        });
-        _ = try objects.Bullet.init(gpa, velocity * 2.0, 5.0, bullet_position, transform.rotation);
-        //errdefer bullet.game_object.deinit(&bullet.game_object, gpa);
-        //try scene.addGameObject(gpa, &bullet.game_object);
+        _ = try player.gun.shoot(gpa, velocity * 2.0, 5.0);
     }
 
     // The following code is only for debugging purposes
@@ -80,13 +81,9 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
 
     if (raylib.isKeyPressed(.space)) {
         _ = try objects.dbg.Timer.init(gpa, 1.0, transform.position);
-        //errdefer timer.game_object.deinit(&timer.game_object, gpa);
-        //try scene.addGameObject(gpa, &timer.game_object);
     }
     if (raylib.isKeyPressed(.kp_add)) {
         _ = try objects.dbg.Box.init(gpa, internal_world_mouse_pos);
-        //errdefer box.game_object.deinit(&box.game_object, gpa);
-        //try scene.addGameObject(gpa, &box.game_object);
     }
 
     if (raylib.isMouseButtonPressed(.right) or raylib.isMouseButtonPressed(.middle)) player.dbg_click_start = internal_world_mouse_pos;
