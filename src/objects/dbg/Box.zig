@@ -27,6 +27,10 @@ pub fn init(gpa: Allocator, position: Vec2) GameObject.UpdateError!*Box {
             .draw = .{ .texture = try game.texture_manager.load(gpa, "box") },
 
             .collider = .{ .rectangle = .{} },
+//            .collider = .{ .rounded_rectangle = .{
+//                .transform = .{},
+//                .radius = game.units_per_pixel * 4.0,
+//            } },
             .collision_layer = .{
                 .movement = true,
             },

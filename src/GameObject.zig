@@ -75,8 +75,13 @@ pub const Collider = union (enum) {
     circle: SimpleTransform,
     /// Transform contains offset and size multiplier from containing GameObject.
     rectangle: SimpleTransform,
-
-    // TODO: `rounded_rectangle`.
+    /// Transform contains offset and size multiplier from containing GameObject.
+    /// Calculated as if it was a rectangle of size `transform.scale - radius`
+    /// and then all points within `radius` units of that.
+    rounded_rectangle: struct {
+        transform: SimpleTransform,
+        radius: f32,
+    },
 };
 pub const CollisionLayer = packed struct {
     movement: bool = false,

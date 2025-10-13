@@ -1,0 +1,12 @@
+RESOURCES
+
+Here go all resources that need to be accessed at runtime.
+
+I do want to add shaders some day, I've made multiple
+little experiments already, but since it's a lot of work
+to write all the shaders myself and edit them, etc., I'm
+considering creating a DSL so I can just write shader
+pipelines and have them automatically be created. Will
+probably be more work than just doing it normally, but
+it'll be cooler :3
+For the syntax I'm imagining something AIR like.

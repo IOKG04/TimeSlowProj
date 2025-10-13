@@ -32,6 +32,7 @@ pub fn getCollisionInfos(self: GameObject, other: GameObject) ?[2]CollisionInfo 
         .circle => switch (other.collider) {
             .circle => return circleCircleCollision(self, other, layers),
             .rectangle => return circleRectangleCollision(self, other, layers),
+            .rounded_rectangle => return circleRoundedCollision(self, other, layers),
             .none => unreachable,
         },
         .rectangle => switch (other.collider) {
@@ -43,6 +44,25 @@ pub fn getCollisionInfos(self: GameObject, other: GameObject) ?[2]CollisionInfo 
                 };
             },
             .rectangle => return rectangleRectangleCollision(self, other, layers),
+            .rounded_rectangle => return rectangleRoundedCollision(self, other, layers),
+            .none => unreachable,
+        },
+        .rounded_rectangle => switch (other.collider) {
+            .circle => { // switch order
+                const cr_collision = circleRoundedCollision(other, self, layers) orelse return null;
+                return .{
+                    cr_collision[1],
+                    cr_collision[0],
+                };
+            },
+            .rectangle => { // switch order
+                const rr_collision = rectangleRoundedCollision(other, self, layers) orelse return null;
+                return .{
+                    rr_collision[1],
+                    rr_collision[0],
+                };
+            },
+            .rounded_rectangle => return roundedRoundedCollision(self, other, layers),
             .none => unreachable,
         },
         .none => unreachable,
@@ -61,7 +81,9 @@ fn circleCircleCollision(a: GameObject, b: GameObject, layers: CollisionLayer) ?
     const distance = a_center.subtract(b_center).len();
 
     const a_radius = a_circle.scale.x * a.transform.scale.x / 2.0;
+    assert(a_radius >= 0.0);
     const b_radius = b_circle.scale.x * b.transform.scale.x / 2.0;
+    assert(b_radius >= 0.0);
     const max_distance = a_radius + b_radius;
 
     const overlap = max_distance - distance;
@@ -69,12 +91,12 @@ fn circleCircleCollision(a: GameObject, b: GameObject, layers: CollisionLayer) ?
     return if (overlap <= 0.0) null else .{
         .{ // for `a`
             .layers = layers,
-            .normal = a_center.subtract(b_center).normalizeSafe() orelse .unit_x,
+            .normal = a_center.subtract(b_center).normalizeSafe() orelse .{ .x = 1.0 },
             .depth = overlap,
         },
         .{ // for `b`
             .layers = layers,
-            .normal = b_center.subtract(a_center).normalizeSafe() orelse .unit_x,
+            .normal = b_center.subtract(a_center).normalizeSafe() orelse .{ .x = -1.0 },
             .depth = overlap,
         },
     };
@@ -89,32 +111,29 @@ fn circleRectangleCollision(c: GameObject, r: GameObject, layers: CollisionLayer
     const c_radius = c_circle.scale.x * c.transform.scale.x / 2.0;
     const r_center = r_rectangle.position.multiply(r.transform.scale).rotate(r.transform.rotation).add(r.transform.position);
     const r_size = r_rectangle.scale.multiply(r.transform.scale);
-    const r_angle = r.transform.rotation;
+    assert(r_size.x >= 0.0 and r_size.y >= 0.0);
 
-    const r_center_rotated = r_center.rotateAround(c_center, -r_angle);
-
-    const closest_to_c_rotated: Vec2 = blk: {
+    const closest_to_c: Vec2 = blk: {
         var x: f32 = undefined;
-        if (c_center.x < r_center_rotated.x - r_size.x / 2.0) {
-            x = r_center_rotated.x - r_size.x / 2.0;
-        } else if (c_center.x > r_center_rotated.x + r_size.x / 2.0) {
-            x = r_center_rotated.x + r_size.x / 2.0;
+        if (c_center.x < r_center.x - r_size.x / 2.0) {
+            x = r_center.x - r_size.x / 2.0;
+        } else if (c_center.x > r_center.x + r_size.x / 2.0) {
+            x = r_center.x + r_size.x / 2.0;
         } else {
             x = c_center.x;
         }
 
         var y: f32 = undefined;
-        if (c_center.y < r_center_rotated.y - r_size.y / 2.0) {
-            y = r_center_rotated.y - r_size.y / 2.0;
-        } else if (c_center.y > r_center_rotated.y + r_size.y / 2.0) {
-            y = r_center_rotated.y + r_size.y / 2.0;
+        if (c_center.y < r_center.y - r_size.y / 2.0) {
+            y = r_center.y - r_size.y / 2.0;
+        } else if (c_center.y > r_center.y + r_size.y / 2.0) {
+            y = r_center.y + r_size.y / 2.0;
         } else {
             y = c_center.y;
         }
 
         break :blk .{ .x = x, .y = y };
     };
-    const closest_to_c = closest_to_c_rotated.rotateAround(c_center, r_angle);
 
     const distance = closest_to_c.subtract(c_center).len();
     const max_distance = c_radius;
@@ -123,17 +142,16 @@ fn circleRectangleCollision(c: GameObject, r: GameObject, layers: CollisionLayer
     return if (overlap <= 0.0) null else return .{
         .{ // for `c`
             .layers = layers,
-            .normal = c_center.subtract(closest_to_c).normalizeSafe() orelse .unit_x,
+            .normal = c_center.subtract(closest_to_c).normalizeSafe() orelse .{ .x = 1.0 },
             .depth = overlap,
         },
         .{ // for `r`
             .layers = layers,
-            .normal = closest_to_c.subtract(c_center).normalizeSafe() orelse .unit_x,
+            .normal = closest_to_c.subtract(c_center).normalizeSafe() orelse .{ .x = -1.0 },
             .depth = overlap,
         },
     };
 }
-
 
 /// Asserts `a.collider` and `b.collider` are both `.rectangle`.
 fn rectangleRectangleCollision(a: GameObject, b: GameObject, layers: CollisionLayer) ?[2]CollisionInfo {
@@ -143,181 +161,145 @@ fn rectangleRectangleCollision(a: GameObject, b: GameObject, layers: CollisionLa
     const a_center = a_rectangle.position.multiply(a.transform.scale).rotate(a.transform.rotation).add(a.transform.position);
     const b_center = b_rectangle.position.multiply(b.transform.scale).rotate(b.transform.rotation).add(b.transform.position);
     const a_size = a_rectangle.scale.multiply(a.transform.scale);
+    assert(a_size.x >= 0.0 and a_size.y >= 0.0);
     const b_size = b_rectangle.scale.multiply(b.transform.scale);
-    const a_angle = a.transform.rotation;
-    const b_angle = b.transform.rotation;
-
-    const a_tr = a_center.add(a_size.multiply(.{ .x = 0.5, .y = 0.5 }).rotate(a_angle));
-    const a_br = a_center.add(a_size.multiply(.{ .x = 0.5, .y = -0.5 }).rotate(a_angle));
-    const a_tl = a_center.add(a_size.multiply(.{ .x = -0.5, .y = 0.5 }).rotate(a_angle));
-    const a_bl = a_center.add(a_size.multiply(.{ .x = -0.5, .y = -0.5 }).rotate(a_angle));
-    const b_tr = b_center.add(b_size.multiply(.{ .x = 0.5, .y = 0.5 }).rotate(b_angle));
-    const b_br = b_center.add(b_size.multiply(.{ .x = 0.5, .y = -0.5 }).rotate(b_angle));
-    const b_tl = b_center.add(b_size.multiply(.{ .x = -0.5, .y = 0.5 }).rotate(b_angle));
-    const b_bl = b_center.add(b_size.multiply(.{ .x = -0.5, .y = -0.5 }).rotate(b_angle));
+    assert(b_size.x >= 0.0 and b_size.y >= 0.0);
 
     // Figure out if they collide based on projections
 
-    // Projecting `b` onto `a`s axes.
-    for ([2]f32{ a_angle, a_angle + 0.5 * pi }, 0..) |projection_angle, i| {
-        const projection_vector: Vec2 = .fromAngle(projection_angle);
+    const a_x_min = a_center.x - a_size.x / 2.0;
+    const a_x_max = a_center.x + a_size.x / 2.0;
+    const a_y_min = a_center.y - a_size.y / 2.0;
+    const a_y_max = a_center.y + a_size.y / 2.0;
+    const b_x_min = b_center.x - b_size.x / 2.0;
+    const b_x_max = b_center.x + b_size.x / 2.0;
+    const b_y_min = b_center.y - b_size.y / 2.0;
+    const b_y_max = b_center.y + b_size.y / 2.0;
 
-        var b_projected_min = math.inf(f32);
-        var b_projected_max = -math.inf(f32);
-        for ([_]Vec2{ b_tr, b_br, b_tl, b_bl }) |corner| {
-            const corner_projected = corner.projectOntoNormalized(projection_vector);
-            b_projected_min = @min(b_projected_min, corner_projected);
-            b_projected_max = @max(b_projected_max, corner_projected);
-        }
-
-        const a_projected_center = a_center.projectOntoNormalized(projection_vector);
-        const a_projected_size = switch (i) {
-            0 => a_size.x / 2.0, // horizontal
-            1 => a_size.y / 2.0, // vertical
-            else => unreachable,
-        };
-        const a_projected_min = a_projected_center - a_projected_size;
-        const a_projected_max = a_projected_center + a_projected_size;
-
-        if (b_projected_max <= a_projected_min or b_projected_min >= a_projected_max) return null;
-    }
-
-    // Projecting `a` onto `b`s axes.
-    for ([2]f32{ b_angle, b_angle + 0.5 * pi }, 0..) |projection_angle, i| {
-        const projection_vector: Vec2 = .fromAngle(projection_angle);
-
-        var a_projected_min = math.inf(f32);
-        var a_projected_max = -math.inf(f32);
-        for ([_]Vec2{ a_tr, a_br, a_tl, a_bl }) |corner| {
-            const corner_projected = corner.projectOntoNormalized(projection_vector);
-            a_projected_min = @min(a_projected_min, corner_projected);
-            a_projected_max = @max(a_projected_max, corner_projected);
-        }
-
-        const b_projected_center = b_center.projectOntoNormalized(projection_vector);
-        const b_projected_size = switch (i) {
-            0 => b_size.x / 2.0, // horizontal
-            1 => b_size.y / 2.0, // vertical
-            else => unreachable,
-        };
-        const b_projected_min = b_projected_center - b_projected_size;
-        const b_projected_max = b_projected_center + b_projected_size;
-
-        if (a_projected_max <= b_projected_min or a_projected_min >= b_projected_max) return null;
-    }
+    if (a_x_min >= b_x_max) return null;
+    if (a_x_max <= b_x_min) return null;
+    if (a_y_min >= b_y_max) return null;
+    if (a_y_max <= b_y_min) return null;
 
     // From here on out, we know `a` and `b` collide.
     // Now we just gotta figure out the normal and depth..
 
-    const a_normal_angle: f32 = blk: {
-        const a_center_rotated = a_center.rotateAround(b_center, b_angle);
-        const difference = a_center_rotated.subtract(b_center);
-        const difference_scaled = difference.divide(b_size);
-        const angle_rotated: f32 = if (@abs(difference_scaled.x) >= @abs(difference_scaled.y)) ar_blk: {
-            break :ar_blk if (difference_scaled.x >= 0.0) 0.0 * pi else 1.0 * pi;
-        } else ar_blk: {
-            break :ar_blk if (difference_scaled.y >= 0.0) 0.5 * pi else 1.5 * pi;
-        };
-        break :blk angle_rotated - b_angle;
+    const a_normal: Vec2 = blk: {
+        if (a_center.x >= b_x_min and a_center.x <= b_x_max) {
+            break :blk .{ .x = 0.0, .y = noZeroSign(a_center.y - b_center.y) };
+        } else if (a_center.y >= b_y_min and a_center.y <= b_y_max) {
+            break :blk .{ .x = noZeroSign(a_center.x - b_center.x), .y = 0.0 };
+        }
+
+        if (a_center.x < b_x_min) {
+            if (a_center.y < b_y_min) {
+                const diff: Vec2 = .{
+                    .x = a_center.x - b_x_min,
+                    .y = a_center.y - b_y_min,
+                };
+                assert(diff.x < 0 and diff.y < 0);
+                if (-diff.x >= -diff.y) {
+                    break :blk .{ .x = -1.0, .y = 0.0 };
+                } else {
+                    break :blk .{ .x = 0.0, .y = -1.0 };
+                }
+            } else { // a_center.y > b_y_max
+                const diff: Vec2 = .{
+                    .x = a_center.x - b_x_min,
+                    .y = a_center.y - b_y_max,
+                };
+                assert(diff.x < 0 and diff.y > 0);
+                if (-diff.x >= diff.y) {
+                    break :blk .{ .x = -1.0, .y = 0.0 };
+                } else {
+                    break :blk .{ .x = 0.0, .y = 1.0 };
+                }
+            }
+        } else { // a_center.x > b_x_max
+            if (a_center.y < b_y_min) {
+                const diff: Vec2 = .{
+                    .x = a_center.x - b_x_max,
+                    .y = a_center.y - b_y_min,
+                };
+                assert(diff.x > 0 and diff.y < 0);
+                if (diff.x >= -diff.y) {
+                    break :blk .{ .x = 1.0, .y = 0.0 };
+                } else {
+                    break :blk .{ .x = 0.0, .y = -1.0 };
+                }
+            } else { // a_center.y > b_y_max
+                const diff: Vec2 = .{
+                    .x = a_center.x - b_x_max,
+                    .y = a_center.y - b_y_max,
+                };
+                assert(diff.x > 0 and diff.y > 0);
+                if (diff.x >= diff.y) {
+                    break :blk .{ .x = 1.0, .y = 0.0 };
+                } else {
+                    break :blk .{ .x = 0.0, .y = 1.0 };
+                }
+            }
+        }
     };
-    const a_normal: Vec2 = .fromAngle(a_normal_angle);
+    const b_normal = a_normal.scale(-1.0);
 
-    const b_normal_angle: f32 = blk: {
-        const b_center_rotated = b_center.rotateAround(a_center, a_angle);
-        const difference = b_center_rotated.subtract(a_center);
-        const difference_scaled = difference.divide(a_size);
-        const angle_rotated: f32 = if (@abs(difference_scaled.x) >= @abs(difference_scaled.y)) ar_blk: {
-            break :ar_blk if (difference_scaled.x >= 0.0) 0.0 * pi else 1.0 * pi;
-        } else ar_blk: {
-            break :ar_blk if (difference_scaled.y >= 0.0) 0.5 * pi else 1.5 * pi;
-        };
-        break :blk angle_rotated - a_angle;
-    };
-    const b_normal: Vec2 = .fromAngle(b_normal_angle);
-
-    const a_depth: f32 = blk: {
-        // Rotate everything such that `a_normal` would be `.{ .x = 1.0, .y = 0.0 }`.
-        const a_tr_rotated = a_tr.rotate(-a_normal_angle);
-        const a_tl_rotated = a_tl.rotate(-a_normal_angle);
-        const a_br_rotated = a_br.rotate(-a_normal_angle);
-        const a_bl_rotated = a_bl.rotate(-a_normal_angle);
-        const b_tr_rotated = b_tr.rotate(-a_normal_angle);
-        const b_bl_rotated = b_bl.rotate(-a_normal_angle);
-
-        const y_min = @min(b_tr_rotated.y, b_bl_rotated.y);
-        const y_max = @max(b_tr_rotated.y, b_bl_rotated.y);
-        const depth_0 = @max(b_tr_rotated.x, b_bl_rotated.x);
-
-        var leftmost: [4]Vec2 = .{ a_tr_rotated, a_tl_rotated, a_br_rotated, a_bl_rotated };
-        if (leftmost[3].x < leftmost[2].x) mem.swap(Vec2, &leftmost[3], &leftmost[2]); // pass 1 (bubble sort)
-        if (leftmost[2].x < leftmost[1].x) mem.swap(Vec2, &leftmost[2], &leftmost[1]);
-        if (leftmost[1].x < leftmost[0].x) mem.swap(Vec2, &leftmost[1], &leftmost[0]);
-        if (leftmost[3].x < leftmost[2].x) mem.swap(Vec2, &leftmost[3], &leftmost[2]); // pass 2
-        if (leftmost[2].x < leftmost[1].x) mem.swap(Vec2, &leftmost[2], &leftmost[1]);
-        if (leftmost[3].x < leftmost[2].x) mem.swap(Vec2, &leftmost[3], &leftmost[2]); // pass 3
-
-        // `pl_0` is leftmost point, `pl_1` is leftmost point not on the same side as `pl_0`.
-        const pl_0 = leftmost[0];
-        if (pl_0.y >= y_min and pl_0.y <= y_max) break :blk depth_0 - pl_0.x;
-        const pl_1 = if (pl_0.y < y_min) if (leftmost[1].y >= y_min) leftmost[1] else leftmost[2] else if (leftmost[1].y <= y_max) leftmost[1] else leftmost[2];
-
-        // Find `m` and `n` such that `x = my + n` describes the line between `pl_0` and `pl_1`,
-        // then put in the closest point to `pl_0` within bounds as `y` and get `x`.
-        const pl_difference = pl_0.subtract(pl_1);
-        const m = pl_difference.x / pl_difference.y;
-        const n = pl_1.x - m * pl_1.y;
-        const y = if (pl_0.y < y_min) y_min else y_max;
-        const x = m * y + n;
-        break :blk depth_0 - x;
-    };
-    const b_depth: f32 = blk: {
-        // Rotate everything such that `b_normal` would be `.{ .x = 1.0, .y = 0.0 }`.
-        const b_tr_rotated = b_tr.rotate(-b_normal_angle);
-        const b_tl_rotated = b_tl.rotate(-b_normal_angle);
-        const b_br_rotated = b_br.rotate(-b_normal_angle);
-        const b_bl_rotated = b_bl.rotate(-b_normal_angle);
-        const a_tr_rotated = a_tr.rotate(-b_normal_angle);
-        const a_bl_rotated = a_bl.rotate(-b_normal_angle);
-
-        const y_min = @min(a_tr_rotated.y, a_bl_rotated.y);
-        const y_max = @max(a_tr_rotated.y, a_bl_rotated.y);
-        const depth_0 = @max(a_tr_rotated.x, a_bl_rotated.x);
-
-        var leftmost: [4]Vec2 = .{ b_tr_rotated, b_tl_rotated, b_br_rotated, b_bl_rotated };
-        if (leftmost[3].x < leftmost[2].x) mem.swap(Vec2, &leftmost[3], &leftmost[2]); // pass 1 (bubble sort)
-        if (leftmost[2].x < leftmost[1].x) mem.swap(Vec2, &leftmost[2], &leftmost[1]);
-        if (leftmost[1].x < leftmost[0].x) mem.swap(Vec2, &leftmost[1], &leftmost[0]);
-        if (leftmost[3].x < leftmost[2].x) mem.swap(Vec2, &leftmost[3], &leftmost[2]); // pass 2
-        if (leftmost[2].x < leftmost[1].x) mem.swap(Vec2, &leftmost[2], &leftmost[1]);
-        if (leftmost[3].x < leftmost[2].x) mem.swap(Vec2, &leftmost[3], &leftmost[2]); // pass 3
-
-        // `pl_0` is leftmost point, `pl_1` is leftmost point not on the same side as `pl_0`.
-        const pl_0 = leftmost[0];
-        if (pl_0.y >= y_min and pl_0.y <= y_max) break :blk depth_0 - pl_0.x;
-        const pl_1 = if (pl_0.y < y_min) if (leftmost[1].y >= y_min) leftmost[1] else leftmost[2] else if (leftmost[1].y <= y_max) leftmost[1] else leftmost[2];
-
-        // Find `m` and `n` such that `x = my + n` describes the line between `pl_0` and `pl_1`,
-        // then put in the closest point to `pl_0` within bounds as `y` and get `x`.
-        const pl_difference = pl_0.subtract(pl_1);
-        const m = pl_difference.x / pl_difference.y;
-        const n = pl_1.x - m * pl_1.y;
-        const y = if (pl_0.y < y_min) y_min else y_max;
-        const x = m * y + n;
-        break :blk depth_0 - x;
+    const depth: f32 = blk: {
+        if (a_normal.x < 0.0) {
+            break :blk a_x_max - b_x_min;
+        } else if (a_normal.x > 0.0) {
+            break :blk b_x_max - a_x_min;
+        } else if (a_normal.y < 0.0) {
+            break :blk a_y_max - b_y_min;
+        } else { // a_normal.y > 0.0
+            break :blk b_y_max - a_y_min;
+        }
     };
 
     return .{
         .{ // for `a`
             .layers = layers,
             .normal = a_normal,
-            .depth = a_depth,
+            .depth = depth,
         },
         .{ // for `b`
             .layers = layers,
             .normal = b_normal,
-            .depth = b_depth,
+            .depth = depth,
         },
     };
+}
+
+/// Asserts `c.collider == .circle` and `r.collider == .rounded_rectangle`.
+fn circleRoundedCollision(c: GameObject, r: GameObject, layers: CollisionLayer) ?[2]CollisionInfo {
+    const c_circle = c.collider.circle;
+    const r_rounded = r.collider.rounded_rectangle;
+
+    _ = .{ c_circle, r_rounded, layers };
+    log.warn("circle-rounded collisions not yet implemented", .{});
+
+    return null;
+}
+
+/// Asserts `a.collider == .rectangle` and `b.collider == .rounded_rectangle`.
+fn rectangleRoundedCollision(a: GameObject, b: GameObject, layers: CollisionLayer) ?[2]CollisionInfo {
+    const a_rectangle = a.collider.rectangle;
+    const b_rounded = b.collider.rounded_rectangle;
+
+    _ = .{ a_rectangle, b_rounded, layers };
+    log.warn("rectangle-rounded collisions not yet implemented", .{});
+
+    return null;
+}
+
+/// Asserts `a.collider` and `b.collider` are both `.rounded_rectangle`.
+fn roundedRoundedCollision(a: GameObject, b: GameObject, layers: CollisionLayer) ?[2]CollisionInfo {
+    const a_rounded = a.collider.rounded_rectangle;
+    const b_rounded = b.collider.rounded_rectangle;
+
+    _ = .{ a_rounded, b_rounded, layers };
+    log.warn("rounded-rounded collisions not yet implemented", .{});
+
+    return null;
 }
 
 /// Returns sign of `f`, but replaces `0.0` with `1.0`.

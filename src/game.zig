@@ -10,7 +10,7 @@ const TextureManager = @import("TextureManager.zig");
 const Allocator = std.mem.Allocator;
 
 // Update this alongside ../resources/textures/README.
-pub const pixels_per_unit = 8;
+pub const pixels_per_unit = 16;
 pub const units_per_pixel = 1.0 / @as(comptime_float, pixels_per_unit);
 
 pub var state: State = .game;
@@ -37,9 +37,7 @@ pub fn init(gpa: Allocator, arena: Allocator) !void {
 
     // set/load/init initial game scene
     errdefer scene.deinit(gpa);
-    {
-        player = try .init(gpa);
-    }
+    player = try .init(gpa);
 }
 
 pub fn close(gpa: Allocator, arena: Allocator) void {

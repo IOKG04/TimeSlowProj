@@ -38,12 +38,11 @@ pub fn init(gpa: Allocator, parent: *const GameObject) GameObject.UpdateError!*G
             .update = update,
             .deinit = deinit,
 
-            .draw_order = .foreground,
             .draw = .{ .texture_offset = .{
                 .texture = gun_texture,
                 .offset = .{
                     .x = 0.0,
-                    .y = @as(f32, @floatFromInt(gun_texture.height)) / 2.0 * game.units_per_pixel + game.units_per_pixel,
+                    .y = @as(f32, @floatFromInt(gun_texture.height)) / 2.0 * game.units_per_pixel + 2.0 * game.units_per_pixel,
                 },
             } },
         },

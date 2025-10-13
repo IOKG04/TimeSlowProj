@@ -1,4 +1,5 @@
 const std = @import("std");
+const math = std.math;
 const raylib = @import("raylib");
 const options = @import("options");
 
@@ -228,15 +229,37 @@ pub fn drawColliders() void {
             .rectangle => |rectangle| {
                 const center = rectangle.position.multiply(go.transform.scale).rotate(go.transform.rotation).add(go.transform.position);
                 const size = rectangle.scale.multiply(go.transform.scale);
-                const angle = go.transform.rotation;
-                const tr = center.add(size.multiply(.{ .x = 0.5, .y = 0.5 }).rotate(angle));
-                const br = center.add(size.multiply(.{ .x = 0.5, .y = -0.5 }).rotate(angle));
-                const tl = center.add(size.multiply(.{ .x = -0.5, .y = 0.5 }).rotate(angle));
-                const bl = center.add(size.multiply(.{ .x = -0.5, .y = -0.5 }).rotate(angle));
+                const tr = center.add(size.multiply(.{ .x = 0.5, .y = 0.5 }));
+                const br = center.add(size.multiply(.{ .x = 0.5, .y = -0.5 }));
+                const tl = center.add(size.multiply(.{ .x = -0.5, .y = 0.5 }));
+                const bl = center.add(size.multiply(.{ .x = -0.5, .y = -0.5 }));
                 raylib.drawLineV(tr.toRaylib(), br.toRaylib(), .green);
                 raylib.drawLineV(tr.toRaylib(), tl.toRaylib(), .green);
                 raylib.drawLineV(bl.toRaylib(), br.toRaylib(), .green);
                 raylib.drawLineV(bl.toRaylib(), tl.toRaylib(), .green);
+            },
+            .rounded_rectangle => |rounded_rectangle| {
+                const transform = rounded_rectangle.transform;
+                const radius = rounded_rectangle.radius;
+                const center = transform.position.multiply(go.transform.scale).rotate(go.transform.rotation).add(go.transform.position);
+                const size = transform.scale.subtract(.{ .x = 2.0 * radius, .y = 2.0 * radius }).multiply(go.transform.scale);
+                const tr = center.add(size.multiply(.{ .x = 0.5, .y = 0.5 }));
+                const br = center.add(size.multiply(.{ .x = 0.5, .y = -0.5 }));
+                const tl = center.add(size.multiply(.{ .x = -0.5, .y = 0.5 }));
+                const bl = center.add(size.multiply(.{ .x = -0.5, .y = -0.5 }));
+                for ([4]Vec2{ tr, tl, bl, br }, [4]Vec2{ tl, bl, br, tr }, [4]f32{ 0.0, 0.5, 1.0, 1.5 }) |corner, next, corner_angle_part| {
+                    raylib.drawCircleSectorLines(
+                        corner.toRaylib(),
+                        radius,
+                        math.pi * (corner_angle_part + 0.0) * math.deg_per_rad,
+                        math.pi * (corner_angle_part + 0.5) * math.deg_per_rad,
+                        4,
+                        .green,
+                    );
+                    const corner_ext = corner.add(.fromPolar(math.pi * (corner_angle_part + 0.5), radius));
+                    const next_ext = next.add(.fromPolar(math.pi * (corner_angle_part + 0.5), radius));
+                    raylib.drawLineV(corner_ext.toRaylib(), next_ext.toRaylib(), .green);
+                }
             },
             .none => {},
         }

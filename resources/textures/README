@@ -3,10 +3,10 @@ TEXTURES
 For the texture manager to be able to understand them,
 all textures must be stored as `.png` files.
 
-The general unit to pixel ratio should be 1 to 8. This
-ratio may still change in the future, but for now
-1 to 8 seems like a good compromise between detail and
-pixelartiness.
+The general unit to pixel ratio should be 1 to 16.
+This ratio may still change in the future, but for
+now 1 to 16 seems like a good compromise between
+detail and pixelartiness.
 
 Also, all textures should be purely black and white.
 During post processing, color might be added, but the

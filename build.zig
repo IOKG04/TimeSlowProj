@@ -4,8 +4,8 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const window_w = b.option(u31, "window_w", "Width of the games window") orelse 600;
-    const window_h = b.option(u31, "window_h", "Height of the games window") orelse 360;
+    const window_w = b.option(u31, "window_w", "Width of the games window") orelse 900;
+    const window_h = b.option(u31, "window_h", "Height of the games window") orelse 540;
     const target_fps = b.option(u31, "target_fps", "Maximum FPS the game renders at") orelse 60;
     const texture_path = "resources/textures";
     const draw_colliders = b.option(bool, "draw_colliders", "Draw collider boundaries") orelse false;

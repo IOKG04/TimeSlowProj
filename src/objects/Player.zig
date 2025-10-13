@@ -29,9 +29,13 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
             .deinit = deinit,
 
             .draw_order = .foreground,
-            .draw = .{ .circle = .white },
+            .draw = .{ .texture = try game.texture_manager.load(gpa, "player") },
 
-            .collider = .{ .circle = .{} },
+            .collider = .{ .rectangle = .{} },
+//            .collider = .{ .rounded_rectangle = .{
+//                .transform = .{},
+//                .radius = game.units_per_pixel * 4.0,
+//            } },
             .collision_layer = .{
                 .movement = true,
                 .projectiles = true,
@@ -44,8 +48,10 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
         },
         .gun = undefined,
     };
+
     outp.gun = try objects.Gun.init(gpa, &outp.game_object);
     errdefer scene.removeGameObject(&outp.gun.game_object);
+    outp.gun.game_object.draw_order = .foreground;
 
     try scene.addGameObject(gpa, &outp.game_object);
     errdefer scene.removeGameObject(&outp.game_object);
@@ -104,6 +110,9 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
             //try scene.addGameObject(gpa, &wall_rectangle.game_object);
         }
     }
+
+    if (raylib.isKeyDown(.kp_9)) transform.rotation += std.math.pi / 2.0 * dt;
+    if (raylib.isKeyDown(.kp_7)) transform.rotation -= std.math.pi / 2.0 * dt;
 }
 
 fn deinit(go: *GameObject, gpa: Allocator) void {
@@ -122,4 +131,6 @@ fn onCollision(self: *GameObject, other: *const GameObject, collision_info: Game
         .immovable, .wall => collision_info.depth,
     };
     player.game_object.transform.position = player.game_object.transform.position.add(collision_info.normal.scale(movement_factor));
+
+    //@import("../main.zig").log.debug("{d} {d}\t{d}", .{ collision_info.normal.x, collision_info.normal.y, collision_info.depth });
 }
