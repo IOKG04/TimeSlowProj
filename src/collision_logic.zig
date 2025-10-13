@@ -38,10 +38,7 @@ pub fn getCollisionInfos(self: GameObject, other: GameObject) ?[2]CollisionInfo 
         .rectangle => switch (other.collider) {
             .circle => { // switch order
                 const cr_collision = circleRectangleCollision(other, self, layers) orelse return null;
-                return .{
-                    cr_collision[1],
-                    cr_collision[0],
-                };
+                return .{ cr_collision[1], cr_collision[0] };
             },
             .rectangle => return rectangleRectangleCollision(self, other, layers),
             .rounded_rectangle => return rectangleRoundedCollision(self, other, layers),
@@ -50,25 +47,17 @@ pub fn getCollisionInfos(self: GameObject, other: GameObject) ?[2]CollisionInfo 
         .rounded_rectangle => switch (other.collider) {
             .circle => { // switch order
                 const cr_collision = circleRoundedCollision(other, self, layers) orelse return null;
-                return .{
-                    cr_collision[1],
-                    cr_collision[0],
-                };
+                return .{ cr_collision[1], cr_collision[0] };
             },
             .rectangle => { // switch order
                 const rr_collision = rectangleRoundedCollision(other, self, layers) orelse return null;
-                return .{
-                    rr_collision[1],
-                    rr_collision[0],
-                };
+                return .{ rr_collision[1], rr_collision[0] };
             },
             .rounded_rectangle => return roundedRoundedCollision(self, other, layers),
             .none => unreachable,
         },
         .none => unreachable,
     }
-
-    return null;
 }
 
 /// Asserts `a.collider` and `b.collider` are both `.circle`.
@@ -109,30 +98,14 @@ fn circleRectangleCollision(c: GameObject, r: GameObject, layers: CollisionLayer
 
     const c_center = c_circle.position.multiply(c.transform.scale).rotate(c.transform.rotation).add(c.transform.position);
     const c_radius = c_circle.scale.x * c.transform.scale.x / 2.0;
+    assert(c_radius >= 0.0);
     const r_center = r_rectangle.position.multiply(r.transform.scale).rotate(r.transform.rotation).add(r.transform.position);
     const r_size = r_rectangle.scale.multiply(r.transform.scale);
     assert(r_size.x >= 0.0 and r_size.y >= 0.0);
 
-    const closest_to_c: Vec2 = blk: {
-        var x: f32 = undefined;
-        if (c_center.x < r_center.x - r_size.x / 2.0) {
-            x = r_center.x - r_size.x / 2.0;
-        } else if (c_center.x > r_center.x + r_size.x / 2.0) {
-            x = r_center.x + r_size.x / 2.0;
-        } else {
-            x = c_center.x;
-        }
-
-        var y: f32 = undefined;
-        if (c_center.y < r_center.y - r_size.y / 2.0) {
-            y = r_center.y - r_size.y / 2.0;
-        } else if (c_center.y > r_center.y + r_size.y / 2.0) {
-            y = r_center.y + r_size.y / 2.0;
-        } else {
-            y = c_center.y;
-        }
-
-        break :blk .{ .x = x, .y = y };
+    const closest_to_c: Vec2 = .{
+        .x = math.clamp(c_center.x, r_center.x - r_size.x / 2.0, r_center.x + r_size.x / 2.0),
+        .y = math.clamp(c_center.y, r_center.y - r_size.y / 2.0, r_center.y + r_size.y / 2.0),
     };
 
     const distance = closest_to_c.subtract(c_center).len();
@@ -273,33 +246,99 @@ fn rectangleRectangleCollision(a: GameObject, b: GameObject, layers: CollisionLa
 fn circleRoundedCollision(c: GameObject, r: GameObject, layers: CollisionLayer) ?[2]CollisionInfo {
     const c_circle = c.collider.circle;
     const r_rounded = r.collider.rounded_rectangle;
+    const r_transform = r_rounded.transform;
+    const r_radius = r_rounded.radius;
+    assert(r_radius >= 0.0);
 
-    _ = .{ c_circle, r_rounded, layers };
-    log.warn("circle-rounded collisions not yet implemented", .{});
+    const c_center = c_circle.position.multiply(c.transform.scale).rotate(c.transform.rotation).add(c.transform.position);
+    const c_radius = c_circle.scale.x * c.transform.scale.x / 2.0;
+    assert(c_radius >= 0.0);
+    const r_center = r_transform.position.multiply(r.transform.scale).rotate(r.transform.rotation).add(r.transform.position);
+    const r_size = r_transform.scale.subtract(.{ .x = 2.0 * r_radius, .y = 2.0 * r_radius }).multiply(r.transform.scale);
+    assert(r_size.x >= 0.0 and r_size.y >= 0.0);
 
-    return null;
+    const closest_to_c_no_radius: Vec2 = .{
+        .x = math.clamp(c_center.x, r_center.x - r_size.x / 2.0, r_center.x + r_size.x / 2.0),
+        .y = math.clamp(c_center.y, r_center.y - r_size.y / 2.0, r_center.y + r_size.y / 2.0),
+    };
+
+    const remaining_diff_dir: Vec2 = c_center.subtract(closest_to_c_no_radius).normalizeSafe() orelse .zero;
+    const closest_to_c = closest_to_c_no_radius.add(remaining_diff_dir.scale(r_radius));
+
+    const distance = closest_to_c.subtract(c_center).len();
+    const max_distance = c_radius;
+    const overlap = max_distance - distance;
+
+    return if (overlap <= 0.0) null else return .{
+        .{ // for `c`
+            .layers = layers,
+            .normal = c_center.subtract(closest_to_c).normalizeSafe() orelse .{ .x = 1.0 },
+            .depth = overlap,
+        },
+        .{ // for `r`
+            .layers = layers,
+            .normal = closest_to_c.subtract(c_center).normalizeSafe() orelse .{ .x = -1.0 },
+            .depth = overlap,
+        },
+    };
 }
 
 /// Asserts `a.collider == .rectangle` and `b.collider == .rounded_rectangle`.
 fn rectangleRoundedCollision(a: GameObject, b: GameObject, layers: CollisionLayer) ?[2]CollisionInfo {
     const a_rectangle = a.collider.rectangle;
     const b_rounded = b.collider.rounded_rectangle;
+    const b_transform = b_rounded.transform;
+    const b_radius = b_rounded.radius;
+    assert(b_radius >= 0.0);
 
-    _ = .{ a_rectangle, b_rounded, layers };
-    log.warn("rectangle-rounded collisions not yet implemented", .{});
+    const a_center = a_rectangle.position.multiply(a.transform.scale).rotate(a.transform.rotation).add(a.transform.position);
+    const b_center = b_transform.position.multiply(b.transform.scale).rotate(b.transform.rotation).add(b.transform.position);
+    const b_size = b_transform.scale.subtract(.{ .x = 2.0 * b_radius, .y = 2.0 * b_radius }).multiply(b.transform.scale);
+    assert(b_size.x >= 0.0 and b_size.y >= 0.0);
 
-    return null;
+    const closest_to_a_no_radius: Vec2 = .{
+        .x = math.clamp(a_center.x, b_center.x - b_size.x / 2.0, b_center.x + b_size.x / 2.0),
+        .y = math.clamp(a_center.y, b_center.y - b_size.y / 2.0, b_center.y + b_size.y / 2.0),
+    };
+
+    // TODO: Maybe implement logic custom-ly.
+    var b_as_circle = b;
+    b_as_circle.transform = .{
+        .position = closest_to_a_no_radius,
+        .scale = .{ .x = b_radius * 2.0, .y = b_radius * 2.0 },
+    };
+    b_as_circle.collider = .{ .circle = .{} };
+    const cr_collision = circleRectangleCollision(b_as_circle, a, layers) orelse return null;
+    return .{ cr_collision[1], cr_collision[0] };
 }
 
 /// Asserts `a.collider` and `b.collider` are both `.rounded_rectangle`.
 fn roundedRoundedCollision(a: GameObject, b: GameObject, layers: CollisionLayer) ?[2]CollisionInfo {
     const a_rounded = a.collider.rounded_rectangle;
+    const a_transform = a_rounded.transform;
+    const a_radius = a_rounded.radius;
+    assert(a_radius >= 0.0);
     const b_rounded = b.collider.rounded_rectangle;
+    const b_transform = b_rounded.transform;
 
-    _ = .{ a_rounded, b_rounded, layers };
-    log.warn("rounded-rounded collisions not yet implemented", .{});
+    const a_center = a_transform.position.multiply(a.transform.scale).rotate(a.transform.rotation).add(a.transform.position);
+    const a_size = a_transform.scale.subtract(.{ .x = 2.0 * a_radius, .y = 2.0 * a_radius }).multiply(a.transform.scale);
+    assert(a_size.x >= 0.0 and a_size.y >= 0.0);
+    const b_center = b_transform.position.multiply(b.transform.scale).rotate(b.transform.rotation).add(b.transform.position);
 
-    return null;
+    const closest_to_b: Vec2 = .{
+        .x = math.clamp(b_center.x, a_center.x - a_size.x / 2.0, a_center.x + a_size.x / 2.0),
+        .y = math.clamp(b_center.y, a_center.y - a_size.y / 2.0, a_center.y + a_size.y / 2.0),
+    };
+
+    // TODO: Maybe implement logic custom-ly.
+    var a_as_circle = a;
+    a_as_circle.transform = .{
+        .position = closest_to_b,
+        .scale = .{ .x = a_radius * 2.0, .y = a_radius * 2.0 },
+    };
+    a_as_circle.collider = .{ .circle = .{} };
+    return circleRoundedCollision(a_as_circle, b, layers);
 }
 
 /// Returns sign of `f`, but replaces `0.0` with `1.0`.

@@ -161,12 +161,12 @@ pub fn draw() void {
                         .white,
                     );
                 },
-                .texture_offset => |texture_offset| {
-                    const texture = texture_offset.texture;
+                .texture_transformed => |texture_transformed| {
+                    const texture = texture_transformed.texture;
                     const transform: GameObject.Transform = .{
-                        .position = texture_offset.offset.multiply(go.transform.scale).rotate(go.transform.rotation).add(go.transform.position),
-                        .rotation = go.transform.rotation,
-                        .scale = go.transform.scale,
+                        .position = texture_transformed.transform.position.multiply(go.transform.scale).rotate(go.transform.rotation).add(go.transform.position),
+                        .rotation = texture_transformed.transform.rotation + go.transform.rotation,
+                        .scale = texture_transformed.transform.scale.multiply(go.transform.scale),
                     };
                     texture.drawPro(
                         .{

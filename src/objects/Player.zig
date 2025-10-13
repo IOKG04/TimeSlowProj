@@ -31,11 +31,10 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
             .draw_order = .foreground,
             .draw = .{ .texture = try game.texture_manager.load(gpa, "player") },
 
-            .collider = .{ .rectangle = .{} },
-//            .collider = .{ .rounded_rectangle = .{
-//                .transform = .{},
-//                .radius = game.units_per_pixel * 4.0,
-//            } },
+            .collider = .{ .rounded_rectangle = .{
+                .transform = .{},
+                .radius = game.units_per_pixel * 4.0,
+            } },
             .collision_layer = .{
                 .movement = true,
                 .projectiles = true,

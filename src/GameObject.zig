@@ -55,9 +55,9 @@ pub const SimpleTransform = struct {
 pub const DrawObject = union (enum) {
     none: void,
     texture: *const raylib.Texture2D,
-    texture_offset: struct {
+    texture_transformed: struct {
         texture: *const raylib.Texture2D,
-        offset: Vec2,
+        transform: Transform,
     },
     circle: raylib.Color,
     circle_dbg: raylib.Color,
@@ -82,6 +82,12 @@ pub const Collider = union (enum) {
         transform: SimpleTransform,
         radius: f32,
     },
+    // TODO: `rotated_rectangle`, specifically for tables and such
+    //       so they can be at an angle. It is to be assumed they
+    //       never collide with themselves, as to save the pain of
+    //       figuring out collision normals and such for them. In
+    //       their collision function, put an `unreachable` after
+    //       the check if they collide at all.
 };
 pub const CollisionLayer = packed struct {
     movement: bool = false,
