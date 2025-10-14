@@ -37,6 +37,12 @@ pub fn init(gpa: Allocator, arena: Allocator) !void {
 
     // set/load/init initial game scene
     errdefer scene.deinit(gpa);
+    try scene.loadLevel(gpa, .{ .width = 8, .height = 4 },
+        \\# #### #
+        \\#  ##  #
+        \\#      #
+        \\########
+    );
     player = try .init(gpa);
 }
 

@@ -5,6 +5,7 @@ const options = @import("options");
 
 const collision_logic = @import("collision_logic.zig");
 const GameObject = @import("GameObject.zig");
+const Tilemap = @import("Tilemap.zig");
 const Vec2 = @import("Vec2.zig");
 
 const Allocator = std.mem.Allocator;
@@ -12,6 +13,8 @@ const ArrayList = std.ArrayList;
 const assert = std.debug.assert;
 
 const log = @import("main.zig").log;
+
+var tilemap: Tilemap = .empty;
 
 var game_objects: ArrayList(RemovableGameObject) = .empty;
 var to_add: ArrayList(RemovableGameObject) = .empty;
@@ -49,6 +52,17 @@ pub fn removeGameObject(game_object: *GameObject) void {
     }
 }
 
+/// Loads a level.
+/// TODO: Make this actually take in a
+///       level format, not just the
+///       tilemap.
+pub fn loadLevel(gpa: Allocator, tilemap_size: Tilemap.Size, tilemap_data: []const u8) !void {
+    tilemap.deinit(gpa);
+    tilemap = .empty;
+    tilemap = try Tilemap.fromString(gpa, .{ .x = -4.0, .y = -2.0 }, tilemap_size, .one, tilemap_data);
+    errdefer tilemap.deinit(gpa);
+}
+
 /// Deinitializes all game objects and the list containing them.
 pub fn deinit(gpa: Allocator) void {
     for (game_objects.items) |rgo| {
@@ -64,6 +78,9 @@ pub fn deinit(gpa: Allocator) void {
     }
     to_add.deinit(gpa);
     to_add = .empty;
+
+    tilemap.deinit(gpa);
+    tilemap = .empty;
 }
 
 /// Updates scene and game objects.
@@ -126,11 +143,67 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
             try other.onCollision(other, self, cinfo_other, gpa);
         }
     }
+
+    for (tilemap.data, 0..) |tile, i| {
+        if (tile == null) continue;
+
+        const tile_as_gameobject_0: GameObject = .{
+            .transform = .{
+                .position = tilemap.origin.add(tilemap.tile_scale.multiply(.{
+                    .x = @floatFromInt(i % tilemap.size.width),
+                    .y = @floatFromInt(i / tilemap.size.width),
+                })),
+                .scale = tilemap.tile_scale,
+            },
+            .collision_layer = .{
+                .background = true,
+            },
+            .collider = tile.?.colliders[0],
+            .metadata = .{
+                .movability = .immovable,
+            },
+            .update = GameObject.no.update,
+            .deinit = GameObject.no.deinit,
+        };
+        const tile_as_gameobject_1: GameObject = blk: {
+            var tag1 = tile_as_gameobject_0;
+            tag1.collider = tile.?.colliders[1];
+            break :blk tag1;
+        };
+
+        for (game_objects.items) |rgo| {
+            const go = rgo.game_object;
+            if (go.paused or go.collider == .none or go.collision_layer.isNone()) continue;
+
+            if (tile_as_gameobject_0.collider != .none) blk: {
+                const cinfo_go: GameObject.CollisionInfo, _ = collision_logic.getCollisionInfos(go.*, tile_as_gameobject_0) orelse break :blk;
+                try go.onCollision(go, &tile_as_gameobject_0, cinfo_go, gpa);
+            }
+            if (tile_as_gameobject_1.collider != .none) blk: {
+                const cinfo_go: GameObject.CollisionInfo, _ = collision_logic.getCollisionInfos(go.*, tile_as_gameobject_1) orelse break :blk;
+                try go.onCollision(go, &tile_as_gameobject_1, cinfo_go, gpa);
+            }
+        }
+    }
 }
 pub const UpdateError = GameObject.UpdateError || Allocator.Error;
 
 /// Draws game objects in scene.
 pub fn draw() void {
+    for (tilemap.data, 0..) |tile, i| {
+        if (tile == null) continue;
+        drawObject(
+            .{
+                .position = tilemap.origin.add(tilemap.tile_scale.multiply(.{
+                    .x = @floatFromInt(i % tilemap.size.width),
+                    .y = @floatFromInt(i / tilemap.size.width),
+                })),
+                .scale = tilemap.tile_scale,
+            },
+            tile.?.draw,
+        );
+    }
+
     const draw_order: [3]GameObject.DrawOrder = .{
         .background,
         .default,

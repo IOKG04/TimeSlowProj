@@ -90,6 +90,7 @@ pub const Collider = union (enum) {
     //       the check if they collide at all.
 };
 pub const CollisionLayer = packed struct {
+    background: bool = false,
     movement: bool = false,
     projectiles: bool = false,
 

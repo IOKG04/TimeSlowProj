@@ -36,6 +36,7 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
                 .radius = game.units_per_pixel * 4.0,
             } },
             .collision_layer = .{
+                .background = true,
                 .movement = true,
                 .projectiles = true,
             },
