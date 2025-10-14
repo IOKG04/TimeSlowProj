@@ -115,12 +115,14 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
 
     for (game_objects.items, 0..) |self_rgo, i| {
         const self = self_rgo.game_object;
-        if (self.paused or self.collider == .none or self.collision_layer.isNone()) continue;
+        if (self.paused) continue;
+        const self_layered_collider = collision_logic.LayeredCollider.fromGameObject(self.*) orelse continue;
         for (game_objects.items[(i + 1)..]) |other_rgo| {
             const other = other_rgo.game_object;
-            if (other.paused or other.collider == .none or other.collision_layer.isNone()) continue;
+            if (other.paused) continue;
+            const other_layered_collider = collision_logic.LayeredCollider.fromGameObject(other.*) orelse continue;
 
-            const cinfo_self: GameObject.CollisionInfo, const cinfo_other: GameObject.CollisionInfo = collision_logic.getCollisionInfos(self.*, other.*) orelse continue; // Possibly add `@branchHint(.likely);` to the `continue` branch, considering most objects aren't colliding.
+            const cinfo_self: GameObject.CollisionInfo, const cinfo_other: GameObject.CollisionInfo = collision_logic.getCollisionInfos(self_layered_collider, other_layered_collider) orelse continue; // Possibly add `@branchHint(.likely);` to the `continue` branch, considering most objects aren't colliding.
 
             try self.onCollision(self, other, cinfo_self, gpa);
             try other.onCollision(other, self, cinfo_other, gpa);
@@ -224,48 +226,42 @@ pub fn drawColliders() void {
 
     for (game_objects.items) |rgo| {
         const go = rgo.game_object;
-        switch (go.collider) {
+        const collider = (collision_logic.LayeredCollider.fromGameObject(go.*) orelse continue).collider;
+        switch (collider) {
             .circle => |circle| {
-                const center = circle.position.scale(go.transform.scale.x).add(go.transform.position);
-                const radius = circle.scale.x * go.transform.scale.x / 2.0;
-                raylib.drawCircleLinesV(center.toRaylib(), radius, .green);
+                raylib.drawCircleLinesV(circle.position.toRaylib(), circle.radius, .green);
             },
             .rectangle => |rectangle| {
-                const center = rectangle.position.multiply(go.transform.scale).rotate(go.transform.rotation).add(go.transform.position);
-                const size = rectangle.scale.multiply(go.transform.scale);
-                const tr = center.add(size.multiply(.{ .x = 0.5, .y = 0.5 }));
-                const br = center.add(size.multiply(.{ .x = 0.5, .y = -0.5 }));
-                const tl = center.add(size.multiply(.{ .x = -0.5, .y = 0.5 }));
-                const bl = center.add(size.multiply(.{ .x = -0.5, .y = -0.5 }));
+                const tr = rectangle.position.add(rectangle.scale.multiply(.{ .x = 0.5, .y = 0.5 }));
+                const br = rectangle.position.add(rectangle.scale.multiply(.{ .x = 0.5, .y = -0.5 }));
+                const tl = rectangle.position.add(rectangle.scale.multiply(.{ .x = -0.5, .y = 0.5 }));
+                const bl = rectangle.position.add(rectangle.scale.multiply(.{ .x = -0.5, .y = -0.5 }));
                 raylib.drawLineV(tr.toRaylib(), br.toRaylib(), .green);
                 raylib.drawLineV(tr.toRaylib(), tl.toRaylib(), .green);
                 raylib.drawLineV(bl.toRaylib(), br.toRaylib(), .green);
                 raylib.drawLineV(bl.toRaylib(), tl.toRaylib(), .green);
             },
             .rounded_rectangle => |rounded_rectangle| {
-                const transform = rounded_rectangle.transform;
-                const radius = rounded_rectangle.radius;
-                const center = transform.position.multiply(go.transform.scale).rotate(go.transform.rotation).add(go.transform.position);
-                const size = transform.scale.subtract(.{ .x = 2.0 * radius, .y = 2.0 * radius }).multiply(go.transform.scale);
-                const tr = center.add(size.multiply(.{ .x = 0.5, .y = 0.5 }));
-                const br = center.add(size.multiply(.{ .x = 0.5, .y = -0.5 }));
-                const tl = center.add(size.multiply(.{ .x = -0.5, .y = 0.5 }));
-                const bl = center.add(size.multiply(.{ .x = -0.5, .y = -0.5 }));
+                const size = rounded_rectangle.scale.subtract(.{ .x = 2.0 * rounded_rectangle.radius, .y = 2.0 * rounded_rectangle.radius });
+                const tr = rounded_rectangle.position.add(size.multiply(.{ .x = 0.5, .y = 0.5 }));
+                const br = rounded_rectangle.position.add(size.multiply(.{ .x = 0.5, .y = -0.5 }));
+                const tl = rounded_rectangle.position.add(size.multiply(.{ .x = -0.5, .y = 0.5 }));
+                const bl = rounded_rectangle.position.add(size.multiply(.{ .x = -0.5, .y = -0.5 }));
                 for ([4]Vec2{ tr, tl, bl, br }, [4]Vec2{ tl, bl, br, tr }, [4]f32{ 0.0, 0.5, 1.0, 1.5 }) |corner, next, corner_angle_part| {
                     raylib.drawCircleSectorLines(
                         corner.toRaylib(),
-                        radius,
+                        rounded_rectangle.radius,
                         math.pi * (corner_angle_part + 0.0) * math.deg_per_rad,
                         math.pi * (corner_angle_part + 0.5) * math.deg_per_rad,
                         4,
                         .green,
                     );
-                    const corner_ext = corner.add(.fromPolar(math.pi * (corner_angle_part + 0.5), radius));
-                    const next_ext = next.add(.fromPolar(math.pi * (corner_angle_part + 0.5), radius));
+                    const corner_ext = corner.add(.fromPolar(math.pi * (corner_angle_part + 0.5), rounded_rectangle.radius));
+                    const next_ext = next.add(.fromPolar(math.pi * (corner_angle_part + 0.5), rounded_rectangle.radius));
                     raylib.drawLineV(corner_ext.toRaylib(), next_ext.toRaylib(), .green);
                 }
             },
-            .none => {},
+            .none => unreachable,
         }
     }
 }

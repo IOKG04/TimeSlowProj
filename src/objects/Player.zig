@@ -32,7 +32,6 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
             .draw = .{ .texture = try game.texture_manager.load(gpa, "player") },
 
             .collider = .{ .rounded_rectangle = .{
-                .transform = .{},
                 .radius = game.units_per_pixel * 4.0,
             } },
             .collision_layer = .{

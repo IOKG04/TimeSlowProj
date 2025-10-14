@@ -72,22 +72,30 @@ pub const DrawOrder = enum {
 pub const Collider = union (enum) {
     none: void,
     /// Transform contains offset and size multiplier from containing GameObject.
-    circle: SimpleTransform,
+    circle: Circle,
     /// Transform contains offset and size multiplier from containing GameObject.
-    rectangle: SimpleTransform,
+    rectangle: Rectangle,
     /// Transform contains offset and size multiplier from containing GameObject.
     /// Calculated as if it was a rectangle of size `transform.scale - radius`
     /// and then all points within `radius` units of that.
-    rounded_rectangle: struct {
-        transform: SimpleTransform,
-        radius: f32,
-    },
+    rounded_rectangle: RoundedRectangle,
     // TODO: `rotated_rectangle`, specifically for tables and such
     //       so they can be at an angle. It is to be assumed they
     //       never collide with themselves, as to save the pain of
     //       figuring out collision normals and such for them. In
     //       their collision function, put an `unreachable` after
     //       the check if they collide at all.
+
+    pub const Circle = struct {
+        position: Vec2 = .zero,
+        radius: f32 = 0.5,
+    };
+    pub const Rectangle = SimpleTransform;
+    pub const RoundedRectangle = struct {
+        position: Vec2 = .zero,
+        scale: Vec2 = .one,
+        radius: f32 = 1.0,
+    };
 };
 pub const CollisionLayer = packed struct {
     movement: bool = false,
