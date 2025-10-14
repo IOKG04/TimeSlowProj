@@ -141,80 +141,84 @@ pub fn draw() void {
             const go = rgo.game_object;
             if (go.draw_order != do) continue;
 
-            switch (go.draw) {
-                .texture => |texture| {
-                    texture.drawPro(
-                        .{
-                            .x = 0,
-                            .y = 0,
-                            .width = @floatFromInt(texture.width),
-                            .height = @floatFromInt(texture.height),
-                        },
-                        .{
-                            .x = go.transform.position.x,
-                            .y = go.transform.position.y,
-                            .width = go.transform.scale.x,
-                            .height = go.transform.scale.y,
-                        },
-                        go.transform.scale.scale(0.5).toRaylib(),
-                        go.transform.rotation * std.math.deg_per_rad,
-                        .white,
-                    );
-                },
-                .texture_transformed => |texture_transformed| {
-                    const texture = texture_transformed.texture;
-                    const transform: GameObject.Transform = .{
-                        .position = texture_transformed.transform.position.multiply(go.transform.scale).rotate(go.transform.rotation).add(go.transform.position),
-                        .rotation = texture_transformed.transform.rotation + go.transform.rotation,
-                        .scale = texture_transformed.transform.scale.multiply(go.transform.scale),
-                    };
-                    texture.drawPro(
-                        .{
-                            .x = 0,
-                            .y = 0,
-                            .width = @floatFromInt(texture.width),
-                            .height = @floatFromInt(texture.height),
-                        },
-                        .{
-                            .x = transform.position.x,
-                            .y = transform.position.y,
-                            .width = transform.scale.x,
-                            .height = transform.scale.y,
-                        },
-                        transform.scale.scale(0.5).toRaylib(),
-                        transform.rotation * std.math.deg_per_rad,
-                        .white,
-                    );
-                },
-
-                inline .circle, .circle_dbg => |color| {
-                    const r = go.transform.scale.x / 2.0;
-                    const center = go.transform.position;
-                    const phi = go.transform.rotation;
-
-                    raylib.drawCircleV(center.toRaylib(), r, color);
-
-                    if (go.draw == .circle_dbg) raylib.drawLineV(center.toRaylib(), center.add(.fromPolar(phi, r * 1.5)).toRaylib(), color);
-                },
-                .rectangle => |color| {
-                    raylib.drawRectanglePro(
-                        .{
-                            .x = go.transform.position.x,
-                            .y = go.transform.position.y,
-                            .width = go.transform.scale.x,
-                            .height = go.transform.scale.y,
-                        },
-                        go.transform.scale.scale(0.5).toRaylib(),
-                        go.transform.rotation * std.math.deg_per_rad,
-                        color,
-                    );
-                },
-
-                .none => {},
-            }
+            drawObject(go.transform, go.draw);
         }
     }
 }
+fn drawObject(transform: GameObject.Transform, draw_object: GameObject.DrawObject) void {
+    switch (draw_object) {
+        .texture => |texture| {
+            texture.drawPro(
+                .{
+                    .x = 0,
+                    .y = 0,
+                    .width = @floatFromInt(texture.width),
+                    .height = @floatFromInt(texture.height),
+                },
+                .{
+                    .x = transform.position.x,
+                    .y = transform.position.y,
+                    .width = transform.scale.x,
+                    .height = transform.scale.y,
+                },
+                transform.scale.scale(0.5).toRaylib(),
+                transform.rotation * std.math.deg_per_rad,
+                .white,
+            );
+        },
+        .texture_transformed => |texture_transformed| {
+            const texture = texture_transformed.texture;
+            const texture_transform: GameObject.Transform = .{
+                .position = texture_transformed.transform.position.multiply(transform.scale).rotate(transform.rotation).add(transform.position),
+                .rotation = texture_transformed.transform.rotation + transform.rotation,
+                .scale = texture_transformed.transform.scale.multiply(transform.scale),
+            };
+            texture.drawPro(
+                .{
+                    .x = 0,
+                    .y = 0,
+                    .width = @floatFromInt(texture.width),
+                    .height = @floatFromInt(texture.height),
+                },
+                .{
+                    .x = texture_transform.position.x,
+                    .y = texture_transform.position.y,
+                    .width = texture_transform.scale.x,
+                    .height = texture_transform.scale.y,
+                },
+                texture_transform.scale.scale(0.5).toRaylib(),
+                texture_transform.rotation * std.math.deg_per_rad,
+                .white,
+            );
+        },
+
+        inline .circle, .circle_dbg => |color| {
+            const r = transform.scale.x / 2.0;
+            const center = transform.position;
+            const phi = transform.rotation;
+
+            raylib.drawCircleV(center.toRaylib(), r, color);
+
+            if (draw_object == .circle_dbg) raylib.drawLineV(center.toRaylib(), center.add(.fromPolar(phi, r * 1.5)).toRaylib(), color);
+        },
+        .rectangle => |color| {
+            raylib.drawRectanglePro(
+                .{
+                    .x = transform.position.x,
+                    .y = transform.position.y,
+                    .width = transform.scale.x,
+                    .height = transform.scale.y,
+                },
+                transform.scale.scale(0.5).toRaylib(),
+                transform.rotation * std.math.deg_per_rad,
+                color,
+            );
+        },
+
+        .none => {},
+    }
+}
+
 pub fn drawColliders() void {
     if (!options.draw_colliders) comptime unreachable; // This function doesn't need to exist if the option is off.
 

@@ -27,7 +27,7 @@ draw_order: DrawOrder = .default,
 
 collider: Collider = .none,
 collision_layer: CollisionLayer = .{},
-onCollision: *const fn (self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void = noOnCollision,
+onCollision: *const fn (self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void = no.onCollision,
 
 metadata: Metadata = .{},
 
@@ -100,7 +100,8 @@ pub const CollisionLayer = packed struct {
     pub fn collidingLayers(a: CollisionLayer, b: CollisionLayer) ?CollisionLayer {
         const a_int: BackingInteger = @bitCast(a);
         const b_int: BackingInteger = @bitCast(b);
-        return @bitCast(a_int & b_int);
+        const colliding_layers: BackingInteger = a_int & b_int;
+        return if (colliding_layers == 0) null else @bitCast(colliding_layers);
     }
     /// Possibly make this `inline`.
     pub fn isNone(cl: CollisionLayer) bool {
@@ -133,16 +134,21 @@ pub const UpdateError = error {
     LoadTexture,
 } || Allocator.Error;
 
-/// The default collision function.
-/// Should never get called, replace this
-/// if the game object can collide.
-pub fn noOnCollision(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
-    _ = self;
-    _ = other;
-    _ = collision_info;
-    _ = gpa;
-    unreachable;
-}
+/// The functions should never be called.
+pub const no = struct {
+    pub fn update(go: *GameObject, gpa: Allocator, dt: f32) UpdateError!void {
+        _ = .{ go, gpa, dt };
+        unreachable;
+    }
+    pub fn deinit(go: *GameObject, gpa: Allocator) void {
+        _ = .{ go, gpa };
+        unreachable;
+    }
+    pub fn onCollision(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
+        _ = .{ self, other, collision_info, gpa };
+        unreachable;
+    }
+};
 /// Functions that do nothing.
 pub const noop = struct {
     pub fn update(go: *GameObject, gpa: Allocator, dt: f32) UpdateError!void {
