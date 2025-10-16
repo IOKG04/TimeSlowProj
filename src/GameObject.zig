@@ -7,9 +7,10 @@
 
 const std = @import("std");
 const raylib = @import("raylib");
+const Vec2 = @import("Vec2");
+const Collision = @import("Collision");
 
 const scene = @import("scene.zig");
-const Vec2 = @import("Vec2.zig");
 
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
@@ -25,9 +26,9 @@ deinit: *const fn (self: *GameObject, gpa: Allocator) void,
 draw: DrawObject = .none,
 draw_order: DrawOrder = .default,
 
-collider: Collider = .none,
-collision_layer: CollisionLayer = .{},
-onCollision: *const fn (self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void = no.onCollision,
+collider: Collision.Collider = .none,
+collision_layer: Collision.Layer = .{},
+onCollision: *const fn (self: *GameObject, other: *const GameObject, collision_info: Collision, gpa: Allocator) UpdateError!void = no.onCollision,
 
 metadata: Metadata = .{},
 
@@ -35,22 +36,6 @@ pub const Transform = struct {
     position: Vec2 = .zero,
     rotation: f32 = 0.0,
     scale: Vec2 = .one,
-    pub fn toSimple(t: Transform) SimpleTransform {
-        return .{
-            .position = t.position,
-            .scale = t.scale,
-        };
-    }
-};
-pub const SimpleTransform = struct {
-    position: Vec2 = .zero,
-    scale: Vec2 = .one,
-    pub fn toTransform(st: SimpleTransform) Transform {
-        return .{
-            .position = st.position,
-            .scale = st.scale,
-        };
-    }
 };
 pub const DrawObject = union (enum) {
     none: void,
@@ -68,62 +53,6 @@ pub const DrawOrder = enum {
     background,
     default,
     foreground,
-};
-pub const Collider = union (enum) {
-    none: void,
-    /// Transform contains offset and size multiplier from containing GameObject.
-    circle: Circle,
-    /// Transform contains offset and size multiplier from containing GameObject.
-    rectangle: Rectangle,
-    /// Transform contains offset and size multiplier from containing GameObject.
-    /// Calculated as if it was a rectangle of size `transform.scale - radius`
-    /// and then all points within `radius` units of that.
-    rounded_rectangle: RoundedRectangle,
-    // TODO: `rotated_rectangle`, specifically for tables and such
-    //       so they can be at an angle. It is to be assumed they
-    //       never collide with themselves, as to save the pain of
-    //       figuring out collision normals and such for them. In
-    //       their collision function, put an `unreachable` after
-    //       the check if they collide at all.
-
-    pub const Circle = struct {
-        position: Vec2 = .zero,
-        radius: f32 = 0.5,
-    };
-    pub const Rectangle = SimpleTransform;
-    pub const RoundedRectangle = struct {
-        position: Vec2 = .zero,
-        scale: Vec2 = .one,
-        radius: f32 = 1.0,
-    };
-};
-pub const CollisionLayer = packed struct {
-    movement: bool = false,
-    projectiles: bool = false,
-
-    pub const BackingInteger = @typeInfo(CollisionLayer).@"struct".backing_integer.?;
-
-    /// Returns layers `a` and `b` can collide on
-    /// or `null` if they cannot collide.
-    pub fn collidingLayers(a: CollisionLayer, b: CollisionLayer) ?CollisionLayer {
-        const a_int: BackingInteger = @bitCast(a);
-        const b_int: BackingInteger = @bitCast(b);
-        const colliding_layers: BackingInteger = a_int & b_int;
-        return if (colliding_layers == 0) null else @bitCast(colliding_layers);
-    }
-    /// Possibly make this `inline`.
-    pub fn isNone(cl: CollisionLayer) bool {
-        const cl_int: BackingInteger = @bitCast(cl);
-        return cl_int == 0;
-    }
-};
-pub const CollisionInfo = struct {
-    layers: CollisionLayer,
-    /// Points away from `other`'s surface.
-    normal: Vec2,
-    /// If `self` was moved this much in the direction of
-    /// `collision_normal`, the collision wouldn't've happened.
-    depth: f32,
 };
 pub const Metadata = struct {
     movability: enum {
@@ -152,7 +81,7 @@ pub const no = struct {
         _ = .{ go, gpa };
         unreachable;
     }
-    pub fn onCollision(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
+    pub fn onCollision(self: *GameObject, other: *const GameObject, collision_info: Collision, gpa: Allocator) UpdateError!void {
         _ = .{ self, other, collision_info, gpa };
         unreachable;
     }
@@ -162,7 +91,7 @@ pub const noop = struct {
     pub fn update(go: *GameObject, gpa: Allocator, dt: f32) UpdateError!void {
         _ = .{ go, gpa, dt };
     }
-    pub fn onCollision(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
+    pub fn onCollision(self: *GameObject, other: *const GameObject, collision_info: Collision, gpa: Allocator) UpdateError!void {
         _ = .{ self, other, collision_info, gpa };
     }
 };
@@ -171,7 +100,7 @@ pub const useful = struct {
     pub const on_collision = struct {
         /// Resolves collisions in a "physics" based manner.
         /// Asserts `self.metadata.movability == .normal`.
-        pub fn physics(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
+        pub fn physics(self: *GameObject, other: *const GameObject, collision_info: Collision, gpa: Allocator) UpdateError!void {
             assert(self.metadata.movability == .normal);
             _ = gpa;
 
@@ -183,7 +112,7 @@ pub const useful = struct {
             self.transform.position = self.transform.position.add(collision_info.normal.scale(movement_factor));
         }
         /// Destroys `self`.
-        pub fn selfDestruct(self: *GameObject, other: *const GameObject, collision_info: CollisionInfo, gpa: Allocator) UpdateError!void {
+        pub fn selfDestruct(self: *GameObject, other: *const GameObject, collision_info: Collision, gpa: Allocator) UpdateError!void {
             _ = .{ other, collision_info, gpa };
             scene.removeGameObject(self);
         }

@@ -1,11 +1,12 @@
 const std = @import("std");
 const raylib = @import("raylib");
+const Vec2 = @import("Vec2");
+const Collision = @import("Collision");
 
 const game = @import("../game.zig");
 const GameObject = @import("../GameObject.zig");
 const objects = @import("../objects.zig");
 const scene = @import("../scene.zig");
-const Vec2 = @import("../Vec2.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -47,12 +48,12 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
         .gun = undefined,
     };
 
+    try scene.addGameObject(gpa, &outp.game_object);
+    errdefer scene.removeGameObject(&outp.game_object);
+
     outp.gun = try objects.Gun.init(gpa, &outp.game_object);
     errdefer scene.removeGameObject(&outp.gun.game_object);
     outp.gun.game_object.draw_order = .foreground;
-
-    try scene.addGameObject(gpa, &outp.game_object);
-    errdefer scene.removeGameObject(&outp.game_object);
 
     return outp;
 }
@@ -111,6 +112,8 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
 
     if (raylib.isKeyDown(.kp_9)) transform.rotation += std.math.pi / 2.0 * dt;
     if (raylib.isKeyDown(.kp_7)) transform.rotation -= std.math.pi / 2.0 * dt;
+
+    game.camera.target = transform.position.toRaylib();
 }
 
 fn deinit(go: *GameObject, gpa: Allocator) void {
@@ -118,7 +121,7 @@ fn deinit(go: *GameObject, gpa: Allocator) void {
     gpa.destroy(player);
 }
 
-fn onCollision(self: *GameObject, other: *const GameObject, collision_info: GameObject.CollisionInfo, gpa: Allocator) GameObject.UpdateError!void {
+fn onCollision(self: *GameObject, other: *const GameObject, collision_info: Collision, gpa: Allocator) GameObject.UpdateError!void {
     _ = gpa;
 
     const player: *Player = @fieldParentPtr("game_object", self);

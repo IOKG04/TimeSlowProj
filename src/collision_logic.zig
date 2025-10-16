@@ -3,15 +3,13 @@
 const std = @import("std");
 const math = std.math;
 const mem = std.mem;
+const Vec2 = @import("Vec2");
+const Collision = @import("Collision");
 
 const GameObject = @import("GameObject.zig");
-const Vec2 = @import("Vec2.zig");
 
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
-const Collider = GameObject.Collider;
-const CollisionLayer = GameObject.CollisionLayer;
-const CollisionInfo = GameObject.CollisionInfo;
 const pi = math.pi;
 
 const log = @import("main.zig").log;
@@ -19,8 +17,8 @@ const log = @import("main.zig").log;
 comptime { @setFloatMode(.optimized); }
 
 pub const LayeredCollider = struct {
-    collider: Collider,
-    layer: CollisionLayer,
+    collider: Collision.Collider,
+    layer: Collision.Layer,
 
     /// Returns `null` if the result wouldn't
     /// be able to collide.
@@ -53,7 +51,7 @@ pub const LayeredCollider = struct {
 /// Otherwise returns `null`.
 ///
 /// Asserts both objects have colliders.
-pub fn getCollisionInfos(self: LayeredCollider, other: LayeredCollider) ?[2]CollisionInfo {
+pub fn getCollisions(self: LayeredCollider, other: LayeredCollider) ?[2]Collision {
     assert(self.collider != .none);
     assert(other.collider != .none);
 
@@ -91,7 +89,7 @@ pub fn getCollisionInfos(self: LayeredCollider, other: LayeredCollider) ?[2]Coll
     }
 }
 
-fn circleCircleCollision(a: Collider.Circle, b: Collider.Circle, layers: CollisionLayer) ?[2]CollisionInfo {
+fn circleCircleCollision(a: Collision.Collider.Circle, b: Collision.Collider.Circle, layers: Collision.Layer) ?[2]Collision {
     assert(b.radius >= 0.0);
     assert(a.radius >= 0.0);
 
@@ -115,7 +113,7 @@ fn circleCircleCollision(a: Collider.Circle, b: Collider.Circle, layers: Collisi
     };
 }
 
-fn circleRectangleCollision(c: Collider.Circle, r: Collider.Rectangle, layers: CollisionLayer) ?[2]CollisionInfo {
+fn circleRectangleCollision(c: Collision.Collider.Circle, r: Collision.Collider.Rectangle, layers: Collision.Layer) ?[2]Collision {
     assert(c.radius >= 0.0);
     assert(r.scale.x >= 0.0 and r.scale.y >= 0.0);
 
@@ -142,7 +140,7 @@ fn circleRectangleCollision(c: Collider.Circle, r: Collider.Rectangle, layers: C
     };
 }
 
-fn rectangleRectangleCollision(a: Collider.Rectangle, b: Collider.Rectangle, layers: CollisionLayer) ?[2]CollisionInfo {
+fn rectangleRectangleCollision(a: Collision.Collider.Rectangle, b: Collision.Collider.Rectangle, layers: Collision.Layer) ?[2]Collision {
     assert(a.scale.x >= 0.0 and a.scale.y >= 0.0);
     assert(b.scale.x >= 0.0 and b.scale.y >= 0.0);
 
@@ -250,7 +248,7 @@ fn rectangleRectangleCollision(a: Collider.Rectangle, b: Collider.Rectangle, lay
     };
 }
 
-fn circleRoundedCollision(c: Collider.Circle, r: Collider.RoundedRectangle, layers: CollisionLayer) ?[2]CollisionInfo {
+fn circleRoundedCollision(c: Collision.Collider.Circle, r: Collision.Collider.RoundedRectangle, layers: Collision.Layer) ?[2]Collision {
     assert(r.radius >= 0.0);
     assert(c.radius >= 0.0);
 
@@ -284,7 +282,7 @@ fn circleRoundedCollision(c: Collider.Circle, r: Collider.RoundedRectangle, laye
     };
 }
 
-fn rectangleRoundedCollision(a: Collider.Rectangle, b: Collider.RoundedRectangle, layers: CollisionLayer) ?[2]CollisionInfo {
+fn rectangleRoundedCollision(a: Collision.Collider.Rectangle, b: Collision.Collider.RoundedRectangle, layers: Collision.Layer) ?[2]Collision {
     assert(b.radius >= 0.0);
 
     const b_size = b.scale.subtract(.{ .x = 2.0 * b.radius, .y = 2.0 * b.radius });
@@ -296,7 +294,7 @@ fn rectangleRoundedCollision(a: Collider.Rectangle, b: Collider.RoundedRectangle
     };
 
     // TODO: Maybe implement logic custom-ly.
-    const b_as_circle: Collider.Circle = .{
+    const b_as_circle: Collision.Collider.Circle = .{
         .position = closest_to_a_no_radius,
         .radius = b.radius,
     };
@@ -304,7 +302,7 @@ fn rectangleRoundedCollision(a: Collider.Rectangle, b: Collider.RoundedRectangle
     return .{ cr_collision[1], cr_collision[0] };
 }
 
-fn roundedRoundedCollision(a: Collider.RoundedRectangle, b: Collider.RoundedRectangle, layers: CollisionLayer) ?[2]CollisionInfo {
+fn roundedRoundedCollision(a: Collision.Collider.RoundedRectangle, b: Collision.Collider.RoundedRectangle, layers: Collision.Layer) ?[2]Collision {
     assert(a.radius >= 0.0);
 
     const a_size = a.scale.subtract(.{ .x = 2.0 * a.radius, .y = 2.0 * a.radius });
@@ -316,7 +314,7 @@ fn roundedRoundedCollision(a: Collider.RoundedRectangle, b: Collider.RoundedRect
     };
 
     // TODO: Maybe implement logic custom-ly.
-    const a_as_circle: Collider.Circle = .{
+    const a_as_circle: Collision.Collider.Circle = .{
         .position = closest_to_b,
         .radius = a.radius,
     };

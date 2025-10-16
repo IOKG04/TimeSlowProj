@@ -2,10 +2,11 @@ const std = @import("std");
 const math = std.math;
 const raylib = @import("raylib");
 const options = @import("options");
+const Vec2 = @import("Vec2");
+const Collision = @import("Collision");
 
 const collision_logic = @import("collision_logic.zig");
 const GameObject = @import("GameObject.zig");
-const Vec2 = @import("Vec2.zig");
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
@@ -122,7 +123,7 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
             if (other.paused) continue;
             const other_layered_collider = collision_logic.LayeredCollider.fromGameObject(other.*) orelse continue;
 
-            const cinfo_self: GameObject.CollisionInfo, const cinfo_other: GameObject.CollisionInfo = collision_logic.getCollisionInfos(self_layered_collider, other_layered_collider) orelse continue; // Possibly add `@branchHint(.likely);` to the `continue` branch, considering most objects aren't colliding.
+            const cinfo_self: Collision, const cinfo_other: Collision = collision_logic.getCollisions(self_layered_collider, other_layered_collider) orelse continue; // Possibly add `@branchHint(.likely);` to the `continue` branch, considering most objects aren't colliding.
 
             try self.onCollision(self, other, cinfo_self, gpa);
             try other.onCollision(other, self, cinfo_other, gpa);

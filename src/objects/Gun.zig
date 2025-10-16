@@ -1,11 +1,11 @@
 const std = @import("std");
 const math = std.math;
+const Vec2 = @import("Vec2");
 
 const game = @import("../game.zig");
 const GameObject = @import("../GameObject.zig");
 const objects = @import("../objects.zig");
 const scene = @import("../scene.zig");
-const Vec2 = @import("../Vec2.zig");
 
 const Allocator = std.mem.Allocator;
 const pi = math.pi;

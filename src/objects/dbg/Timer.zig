@@ -1,9 +1,9 @@
 const std = @import("std");
+const Vec2 = @import("Vec2");
 
 const GameObject = @import("../../GameObject.zig");
 const parts = @import("../parts.zig");
 const scene = @import("../../scene.zig");
-const Vec2 = @import("../../Vec2.zig");
 
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
