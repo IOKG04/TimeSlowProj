@@ -248,6 +248,8 @@ fn rectangleRectangleCollision(a: Collision.Collider.Rectangle, b: Collision.Col
     };
 }
 
+// TODO: There's currently a bug where the collision might not count
+//       if the circle is inside the rounded rectangle. Fix that.
 fn circleRoundedCollision(c: Collision.Collider.Circle, r: Collision.Collider.RoundedRectangle, layers: Collision.Layer) ?[2]Collision {
     assert(r.radius >= 0.0);
     assert(c.radius >= 0.0);

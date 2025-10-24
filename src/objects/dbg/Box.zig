@@ -33,6 +33,7 @@ pub fn init(gpa: Allocator, position: Vec2) GameObject.UpdateError!*Box {
             .collision_layer = .{
                 .movement = true,
                 .projectiles = true,
+                .background = true,
             },
             .onCollision = GameObject.useful.on_collision.physics,
 

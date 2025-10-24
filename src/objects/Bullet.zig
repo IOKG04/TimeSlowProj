@@ -35,6 +35,7 @@ pub fn init(gpa: Allocator, velocity: f32, lifetime: f32, position: Vec2, rotati
             .collider = .{ .circle = .{} },
             .collision_layer = .{
                 .projectiles = true,
+                .background = true,
             },
             .onCollision = GameObject.useful.on_collision.selfDestruct,
 

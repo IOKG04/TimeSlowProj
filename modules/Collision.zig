@@ -38,20 +38,20 @@ pub const Collider = union (enum) {
 
     /// Draws `col` using raylib's drawing functions.
     /// Asserts `col != .none`.
-    pub fn draw(col: Collider) void {
+    pub fn draw(col: Collider, color: raylib.Color) void {
         col_switch: switch (col) {
             .circle => |circle| {
-                raylib.drawCircleLinesV(circle.position.toRaylib(), circle.radius, .green);
+                raylib.drawCircleLinesV(circle.position.toRaylib(), circle.radius, color);
             },
             .rectangle => |rectangle| {
                 const tr = rectangle.position.add(rectangle.scale.multiply(.{ .x = 0.5, .y = 0.5 }));
                 const br = rectangle.position.add(rectangle.scale.multiply(.{ .x = 0.5, .y = -0.5 }));
                 const tl = rectangle.position.add(rectangle.scale.multiply(.{ .x = -0.5, .y = 0.5 }));
                 const bl = rectangle.position.add(rectangle.scale.multiply(.{ .x = -0.5, .y = -0.5 }));
-                raylib.drawLineV(tr.toRaylib(), br.toRaylib(), .green);
-                raylib.drawLineV(tr.toRaylib(), tl.toRaylib(), .green);
-                raylib.drawLineV(bl.toRaylib(), br.toRaylib(), .green);
-                raylib.drawLineV(bl.toRaylib(), tl.toRaylib(), .green);
+                raylib.drawLineV(tr.toRaylib(), br.toRaylib(), color);
+                raylib.drawLineV(tr.toRaylib(), tl.toRaylib(), color);
+                raylib.drawLineV(bl.toRaylib(), br.toRaylib(), color);
+                raylib.drawLineV(bl.toRaylib(), tl.toRaylib(), color);
             },
             .rounded_rectangle => |rounded_rectangle| {
                 if (rounded_rectangle.radius == 0.0) {
@@ -73,11 +73,11 @@ pub const Collider = union (enum) {
                         math.pi * (corner_angle_part + 0.0) * math.deg_per_rad,
                         math.pi * (corner_angle_part + 0.5) * math.deg_per_rad,
                         4,
-                        .green,
+                        color,
                     );
                     const corner_ext = corner.add(.fromPolar(math.pi * (corner_angle_part + 0.5), rounded_rectangle.radius));
                     const next_ext = next.add(.fromPolar(math.pi * (corner_angle_part + 0.5), rounded_rectangle.radius));
-                    raylib.drawLineV(corner_ext.toRaylib(), next_ext.toRaylib(), .green);
+                    raylib.drawLineV(corner_ext.toRaylib(), next_ext.toRaylib(), color);
                 }
             },
             .none => unreachable,
@@ -86,10 +86,18 @@ pub const Collider = union (enum) {
 };
 
 pub const Layer = packed struct {
+    // TODO: Have different `background`s so
+    //       things can collide with the background
+    //       without colliding with each other.
+    background: bool = false,
     movement: bool = false,
     projectiles: bool = false,
 
     pub const BackingInteger = @typeInfo(Layer).@"struct".backing_integer.?;
+
+    pub const background_preset: Layer = .{
+        .background = true,
+    };
 
     /// Returns layers `a` and `b` can collide on
     /// or `null` if they cannot collide.
@@ -105,3 +113,7 @@ pub const Layer = packed struct {
         return cl_int == 0;
     }
 };
+
+test {
+    std.testing.refAllDeclsRecursive(@This());
+}

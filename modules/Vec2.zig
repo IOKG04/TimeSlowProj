@@ -230,3 +230,7 @@ fn expectApproxEqAbsVec2(expected: Vec2, actual: Vec2, tollerance: f32) !void {
     try expectApproxEqAbs(expected.x, actual.x, tollerance);
     try expectApproxEqAbs(expected.y, actual.y, tollerance);
 }
+
+test {
+    std.testing.refAllDeclsRecursive(@This());
+}

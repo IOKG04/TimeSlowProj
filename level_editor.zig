@@ -191,9 +191,9 @@ pub fn main() !void {
             camera.begin();
                 texture.drawEx(.{ .x = 0.0, .y = 0.0 }, 0.0, options.units_per_pixel, .white);
                 for (colliders.items) |c| {
-                    c.draw();
+                    c.draw(.green);
                 }
-                if (active_collider != .none) active_collider.draw();
+                if (active_collider != .none) active_collider.draw(.red);
             camera.end();
             raylib.drawFPS(0, 0);
             raylib.drawText(@tagName(collider_type), 0, 20, 20, .red);
@@ -239,4 +239,8 @@ fn save(level_path: []const u8, texture_path: []const u8, colliders: []const Col
     try outp_writer.end();
 
     log.info("saved to {s}", .{level_path});
+}
+
+test {
+    std.testing.refAllDeclsRecursive(@This());
 }

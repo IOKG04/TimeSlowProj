@@ -48,6 +48,7 @@ pub fn init(gpa: Allocator, parent: *const GameObject) GameObject.UpdateError!*G
                     },
                 },
             } },
+            .draw_order = .background,
         },
         .center = &parent.transform.position,
         .radius = parent.transform.scale.abs().maxDimension(),

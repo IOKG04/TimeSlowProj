@@ -4,6 +4,7 @@ const raylib = @import("raylib");
 const options = @import("options");
 const Vec2 = @import("Vec2");
 const Collision = @import("Collision");
+const LevelBackground = @import("LevelBackground");
 
 const collision_logic = @import("collision_logic.zig");
 const GameObject = @import("GameObject.zig");
@@ -13,6 +14,8 @@ const ArrayList = std.ArrayList;
 const assert = std.debug.assert;
 
 const log = @import("main.zig").log;
+
+var background: ?LevelBackground = null;
 
 var game_objects: ArrayList(RemovableGameObject) = .empty;
 var to_add: ArrayList(RemovableGameObject) = .empty;
@@ -50,6 +53,27 @@ pub fn removeGameObject(game_object: *GameObject) void {
     }
 }
 
+/// Unload current background and replace it with
+/// the one at `path`.
+///
+/// Returns an `UpdateError` so it can be easily
+/// used from `update` functions.
+pub fn loadBackground(gpa: Allocator, path: []const u8, origin: Vec2) GameObject.UpdateError!void {
+    unloadBackground(gpa);
+    background = LevelBackground.load(gpa, path, origin) catch |err| switch (err) {
+        error.LoadTexture => return error.LoadTexture,
+        error.OutOfMemory => return error.OutOfMemory,
+        else => return error.Generic,
+    };
+}
+/// Unloads all resources associated with the current background.
+pub fn unloadBackground(gpa: Allocator) void {
+    if (background) |bg| {
+        bg.unload(gpa);
+    }
+    background = null;
+}
+
 /// Deinitializes all game objects and the list containing them.
 pub fn deinit(gpa: Allocator) void {
     for (game_objects.items) |rgo| {
@@ -65,6 +89,8 @@ pub fn deinit(gpa: Allocator) void {
     }
     to_add.deinit(gpa);
     to_add = .empty;
+
+    unloadBackground(gpa);
 }
 
 /// Updates scene and game objects.
@@ -105,6 +131,7 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
         }
     }
 
+    // Update game objects.
     for (game_objects.items) |rgo| {
         const go = rgo.game_object;
         if (go.paused) continue;
@@ -114,10 +141,45 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
         try go.update(go, gpa, dt * time_stretch);
     }
 
+    // Resolve collisions with background.
+    if (background) |bg| {
+        for (game_objects.items) |rgo| {
+            const go = rgo.game_object;
+            if (go.paused) continue;
+            const go_layered_collider = collision_logic.LayeredCollider.fromGameObject(go.*) orelse continue;
+
+            for (0..bg.colliders.len) |idx| {
+                const bg_collider = bg.getColliderIdx(idx);
+                const bg_layered_collider: collision_logic.LayeredCollider = .{
+                    .collider = bg_collider,
+                    .layer = .background_preset,
+                };
+
+                const go_collision_info: Collision, _ = collision_logic.getCollisions(go_layered_collider, bg_layered_collider) orelse continue;
+
+                const bg_as_go: GameObject = .{
+                    .collider = bg_collider,
+                    .collision_layer = .background_preset,
+                    .metadata = .{
+                        .movability = .wall,
+                        .is_background = true,
+                    },
+
+                    .update = GameObject.no.update,
+                    .deinit = GameObject.no.deinit,
+                };
+
+                try go.onCollision(go, &bg_as_go, go_collision_info, gpa);
+            }
+        }
+    }
+
+    // Resolve collisions.
     for (game_objects.items, 0..) |self_rgo, i| {
         const self = self_rgo.game_object;
         if (self.paused) continue;
         const self_layered_collider = collision_logic.LayeredCollider.fromGameObject(self.*) orelse continue;
+
         for (game_objects.items[(i + 1)..]) |other_rgo| {
             const other = other_rgo.game_object;
             if (other.paused) continue;
@@ -134,18 +196,17 @@ pub const UpdateError = GameObject.UpdateError || Allocator.Error;
 
 /// Draws game objects in scene.
 pub fn draw() void {
-    const draw_order: [3]GameObject.DrawOrder = .{
-        .background,
-        .default,
-        .foreground,
-    };
-    for (draw_order) |do| {
+    for (GameObject.DrawOrder.draw_order) |do| {
         for (game_objects.items) |rgo| {
             const go = rgo.game_object;
             if (go.draw_order != do) continue;
 
             drawObject(go.transform, go.draw);
         }
+    }
+
+    if (background) |bg| {
+        bg.texture.drawEx(bg.origin.toRaylib(), 0.0, options.units_per_pixel, .white);
     }
 }
 fn drawObject(transform: GameObject.Transform, draw_object: GameObject.DrawObject) void {
@@ -223,10 +284,17 @@ fn drawObject(transform: GameObject.Transform, draw_object: GameObject.DrawObjec
 }
 
 pub fn drawColliders() void {
+    if (background) |bg| {
+        for (0..bg.colliders.len) |idx| {
+            const collider = bg.getColliderIdx(idx);
+            collider.draw(.red);
+        }
+    }
+
     for (game_objects.items) |rgo| {
         const go = rgo.game_object;
         const collider = (collision_logic.LayeredCollider.fromGameObject(go.*) orelse continue).collider;
-        collider.draw();
+        collider.draw(.green);
     }
 }
 

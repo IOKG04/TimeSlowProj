@@ -53,6 +53,12 @@ pub const DrawOrder = enum {
     background,
     default,
     foreground,
+
+    pub const draw_order: [3]DrawOrder = .{
+        .background,
+        .default,
+        .foreground,
+    };
 };
 pub const Metadata = struct {
     movability: enum {
@@ -65,6 +71,8 @@ pub const Metadata = struct {
         /// Doesn't apply moving forces.
         bullet,
     } = .normal,
+    /// Should only be `true` for game objects created from a level background.
+    is_background: bool = false,
 };
 pub const UpdateError = error {
     Generic,

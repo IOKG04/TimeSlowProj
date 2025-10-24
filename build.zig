@@ -45,6 +45,7 @@ pub fn build(b: *std.Build) void {
     });
     collision_mod.addImport("Vec2", vec2_mod);
     collision_mod.addImport("raylib", raylib);
+    collision_mod.linkLibrary(raylib_artifact);
 
     const level_background_mod = b.addModule("LevelBackground", .{
         .root_source_file = b.path("modules/LevelBackground.zig"),
@@ -107,27 +108,27 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run program unit tests");
     const test_exe_run = b.addRunArtifact(b.addTest(.{
-        .name = "TimeSlowProj tests",
+        .name = "TimeSlowProj",
         .root_module = exe.root_module,
     }));
     test_step.dependOn(&test_exe_run.step);
     const test_level_editor_run = b.addRunArtifact(b.addTest(.{
-        .name = "Level Editor tests",
+        .name = "Level Editor",
         .root_module = level_editor.root_module,
     }));
     test_step.dependOn(&test_level_editor_run.step);
     const test_vec2_run = b.addRunArtifact(b.addTest(.{
-        .name = "Vec2 tests",
+        .name = "modules: Vec2",
         .root_module = vec2_mod,
     }));
     test_step.dependOn(&test_vec2_run.step);
     const test_collision_run = b.addRunArtifact(b.addTest(.{
-        .name = "Collision tests",
+        .name = "modules: Collision",
         .root_module = collision_mod,
     }));
     test_step.dependOn(&test_collision_run.step);
     const test_level_background_run = b.addRunArtifact(b.addTest(.{
-        .name = "Vec2 tests",
+        .name = "modules: LevelBackground",
         .root_module = level_background_mod,
     }));
     test_step.dependOn(&test_level_background_run.step);

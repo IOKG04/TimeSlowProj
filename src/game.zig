@@ -3,6 +3,7 @@ const raylib = @import("raylib");
 const options = @import("options");
 
 const GameObject = @import("GameObject.zig");
+const main = @import("main.zig");
 const objects = @import("objects.zig");
 const scene = @import("scene.zig");
 const TextureManager = @import("TextureManager.zig");
@@ -35,6 +36,14 @@ pub fn init(gpa: Allocator, arena: Allocator) !void {
     // set/load/init initial game scene
     errdefer scene.deinit(gpa);
     player = try .init(gpa);
+
+    // If an argument was provided,
+    // interpret it as a level to load.
+    if (main.args.len > 1) {
+        const level_path = main.args[1];
+        // TODO: Make the offset adjustable too.
+        try scene.loadBackground(gpa, level_path, .{ .x = -2.0, .y = -2.0 });
+    }
 }
 
 pub fn close(gpa: Allocator, arena: Allocator) void {

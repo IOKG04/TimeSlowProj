@@ -39,6 +39,7 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
             .collision_layer = .{
                 .movement = true,
                 .projectiles = true,
+                .background = true,
             },
             .onCollision = onCollision,
 
@@ -54,7 +55,6 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
 
     outp.gun = try objects.Gun.init(gpa, &outp.game_object);
     errdefer scene.removeGameObject(&outp.gun.game_object);
-    outp.gun.game_object.draw_order = .foreground;
 
     return outp;
 }
