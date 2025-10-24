@@ -2,6 +2,7 @@ const std = @import("std");
 const raylib = @import("raylib");
 const Vec2 = @import("Vec2");
 const Collision = @import("Collision");
+const options = @import("options");
 
 const game = @import("../game.zig");
 const GameObject = @import("../GameObject.zig");
@@ -33,7 +34,7 @@ pub fn init(gpa: Allocator) GameObject.UpdateError!*Player {
             .draw = .{ .texture = try game.texture_manager.load(gpa, "player") },
 
             .collider = .{ .rounded_rectangle = .{
-                .radius = game.units_per_pixel * 4.0,
+                .radius = options.units_per_pixel * 4.0,
             } },
             .collision_layer = .{
                 .movement = true,
@@ -96,8 +97,6 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
         const radius = player.dbg_click_start.subtract(internal_world_mouse_pos).len() * 2.0;
         if (radius > 0.0) {
             _ = try objects.dbg.Wall.init(gpa, player.dbg_click_start, .{ .circle = radius });
-            //errdefer wall_circle.game_object.deinit(&wall_circle.game_object, gpa);
-            //try scene.addGameObject(gpa, &wall_circle.game_object);
         }
     }
     if (raylib.isMouseButtonReleased(.middle)) {
@@ -105,8 +104,6 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
         if (size_signed.x != 0.0 and size_signed.y != 0.0) {
             const center = internal_world_mouse_pos.add(size_signed.scale(0.5));
             _ = try objects.dbg.Wall.init(gpa, center, .{ .rectangle = size_signed.abs() });
-            //errdefer wall_rectangle.game_object.deinit(&wall_rectangle.game_object, gpa);
-            //try scene.addGameObject(gpa, &wall_rectangle.game_object);
         }
     }
 

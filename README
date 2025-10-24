@@ -28,3 +28,20 @@ with doom: The game's code is open source and free to use, but
 the game's data is private so I can still make a profit off of
 this. Yall are free to make your own levels though. I bet when
 this is done and I show it to my bf, he's gonna make some :3
+
+LEVEL EDITOR
+
+If you run 'zig build level-editor', a level editor will start.
+Controls are a little stupid, so here's a list:
+- 'w', 'a', 's', 'd': Move camera.
+- 'q', 'e': Zoom in/out.
+- '1', '2', '3': Switch collider type.
+- 'left click': Place collider.
+- ',', '.': Change rouned rectangle radius.
+- 'backspace': Delete last placed collider.
+- 'enter': Save.
+
+CREDITS
+
+Besides me, the following people also worked in this:
+dragin (@dragin_fire on discord)

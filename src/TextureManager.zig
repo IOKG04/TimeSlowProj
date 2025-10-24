@@ -40,7 +40,10 @@ pub fn loadAssumeUnloaded(tm: *TextureManager, gpa: Allocator, name: []const u8)
     defer gpa.free(path);
 
     const texture = try tm.arena.create(Texture2D);
-    texture.* = raylib.loadTexture(path) catch return error.LoadTexture;
+    texture.* = raylib.loadTexture(path) catch |err| switch (err) {
+        error.LoadTexture => return error.LoadTexture,
+        else => unreachable, // Despite the error set, no other error can be returned.
+    };
     errdefer texture.*.unload();
     try tm.loaded.put(gpa, name, texture);
 

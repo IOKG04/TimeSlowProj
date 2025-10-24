@@ -223,47 +223,10 @@ fn drawObject(transform: GameObject.Transform, draw_object: GameObject.DrawObjec
 }
 
 pub fn drawColliders() void {
-    if (!options.draw_colliders) comptime unreachable; // This function doesn't need to exist if the option is off.
-
     for (game_objects.items) |rgo| {
         const go = rgo.game_object;
         const collider = (collision_logic.LayeredCollider.fromGameObject(go.*) orelse continue).collider;
-        switch (collider) {
-            .circle => |circle| {
-                raylib.drawCircleLinesV(circle.position.toRaylib(), circle.radius, .green);
-            },
-            .rectangle => |rectangle| {
-                const tr = rectangle.position.add(rectangle.scale.multiply(.{ .x = 0.5, .y = 0.5 }));
-                const br = rectangle.position.add(rectangle.scale.multiply(.{ .x = 0.5, .y = -0.5 }));
-                const tl = rectangle.position.add(rectangle.scale.multiply(.{ .x = -0.5, .y = 0.5 }));
-                const bl = rectangle.position.add(rectangle.scale.multiply(.{ .x = -0.5, .y = -0.5 }));
-                raylib.drawLineV(tr.toRaylib(), br.toRaylib(), .green);
-                raylib.drawLineV(tr.toRaylib(), tl.toRaylib(), .green);
-                raylib.drawLineV(bl.toRaylib(), br.toRaylib(), .green);
-                raylib.drawLineV(bl.toRaylib(), tl.toRaylib(), .green);
-            },
-            .rounded_rectangle => |rounded_rectangle| {
-                const size = rounded_rectangle.scale.subtract(.{ .x = 2.0 * rounded_rectangle.radius, .y = 2.0 * rounded_rectangle.radius });
-                const tr = rounded_rectangle.position.add(size.multiply(.{ .x = 0.5, .y = 0.5 }));
-                const br = rounded_rectangle.position.add(size.multiply(.{ .x = 0.5, .y = -0.5 }));
-                const tl = rounded_rectangle.position.add(size.multiply(.{ .x = -0.5, .y = 0.5 }));
-                const bl = rounded_rectangle.position.add(size.multiply(.{ .x = -0.5, .y = -0.5 }));
-                for ([4]Vec2{ tr, tl, bl, br }, [4]Vec2{ tl, bl, br, tr }, [4]f32{ 0.0, 0.5, 1.0, 1.5 }) |corner, next, corner_angle_part| {
-                    raylib.drawCircleSectorLines(
-                        corner.toRaylib(),
-                        rounded_rectangle.radius,
-                        math.pi * (corner_angle_part + 0.0) * math.deg_per_rad,
-                        math.pi * (corner_angle_part + 0.5) * math.deg_per_rad,
-                        4,
-                        .green,
-                    );
-                    const corner_ext = corner.add(.fromPolar(math.pi * (corner_angle_part + 0.5), rounded_rectangle.radius));
-                    const next_ext = next.add(.fromPolar(math.pi * (corner_angle_part + 0.5), rounded_rectangle.radius));
-                    raylib.drawLineV(corner_ext.toRaylib(), next_ext.toRaylib(), .green);
-                }
-            },
-            .none => unreachable,
-        }
+        collider.draw();
     }
 }
 

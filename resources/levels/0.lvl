@@ -1,0 +1,70 @@
+.{ .texture_path = "textures/0.png", .colliders = .{
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 3.5, .y = 4.5 },
+        .scale = .{ .x = 0.5, .y = 5 },
+        .radius = 0.25,
+    } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 6.5, .y = 5.5 },
+        .scale = .{ .x = 0.5, .y = 7 },
+        .radius = 0.25,
+    } },
+    .{ .rectangle = .{ .position = .{ .x = 2.125, .y = 4.5 }, .scale = .{ .x = 2.25, .y = 0.5 } } },
+    .{ .rectangle = .{ .position = .{ .x = 0.5, .y = 4.5 }, .scale = .{ .x = 1, .y = 9 } } },
+    .{ .rectangle = .{ .position = .{ .x = 23.5, .y = 0.5 }, .scale = .{ .x = 45, .y = 1 } } },
+    .{ .rectangle = .{ .position = .{ .x = 45.5, .y = 4.5 }, .scale = .{ .x = 1, .y = 7 } } },
+    .{ .rectangle = .{ .position = .{ .x = 23.5, .y = 8.5 }, .scale = .{ .x = 45, .y = 1 } } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 15.5, .y = 2.875 },
+        .scale = .{ .x = 0.5, .y = 5.75 },
+        .radius = 0.125,
+    } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 17, .y = 5.5 },
+        .scale = .{ .x = 3.5, .y = 0.5 },
+        .radius = 0.125,
+    } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 18.5, .y = 3.875 },
+        .scale = .{ .x = 0.5, .y = 3.75 },
+        .radius = 0.25,
+    } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 21.5, .y = 3.875 },
+        .scale = .{ .x = 0.5, .y = 3.75 },
+        .radius = 0.25,
+    } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 24, .y = 5.5 },
+        .scale = .{ .x = 8, .y = 0.5 },
+        .radius = 0.25,
+    } },
+    .{ .rectangle = .{ .position = .{ .x = 24.5, .y = 3.125 }, .scale = .{ .x = 0.5, .y = 4.25 } } },
+    .{ .rectangle = .{ .position = .{ .x = 27.5, .y = 2.125 }, .scale = .{ .x = 0.5, .y = 2.25 } } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 28, .y = 3.5 },
+        .scale = .{ .x = 4, .y = 0.5 },
+        .radius = 0.25,
+    } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 31.5, .y = 2 },
+        .scale = .{ .x = 0.5, .y = 4 },
+        .radius = 0.25,
+    } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 36, .y = 5.5 },
+        .scale = .{ .x = 14, .y = 0.5 },
+        .radius = 0.25,
+    } },
+    .{ .rectangle = .{ .position = .{ .x = 38.5, .y = 3.125 }, .scale = .{ .x = 0.5, .y = 4.25 } } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 42.5, .y = 2.875 },
+        .scale = .{ .x = 0.5, .y = 1.75 },
+        .radius = 0.25,
+    } },
+    .{ .rounded_rectangle = .{
+        .position = .{ .x = 44.125, .y = 3.5 },
+        .scale = .{ .x = 3.75, .y = 0.5 },
+        .radius = 0.125,
+    } },
+} }

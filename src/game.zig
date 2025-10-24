@@ -9,10 +9,6 @@ const TextureManager = @import("TextureManager.zig");
 
 const Allocator = std.mem.Allocator;
 
-// Update this alongside ../resources/textures/README.
-pub const pixels_per_unit = 16;
-pub const units_per_pixel = 1.0 / @as(comptime_float, pixels_per_unit);
-
 pub var state: State = .game;
 pub var player: *objects.Player = undefined;
 pub var camera: raylib.Camera2D = .{
@@ -29,6 +25,7 @@ pub fn init(gpa: Allocator, arena: Allocator) !void {
     while (!raylib.isWindowReady()) {
         std.Thread.sleep(10 * std.time.ns_per_ms);
     }
+    errdefer raylib.closeWindow();
     raylib.setTargetFPS(options.target_fps);
 
     // init `texture_manager`

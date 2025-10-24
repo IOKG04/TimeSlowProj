@@ -1,11 +1,12 @@
 const std = @import("std");
+const math = std.math;
 const builtin = @import("builtin");
 const raylib = @import("raylib");
 
 const assert = std.debug.assert;
 const expectEqual = std.testing.expectEqual;
 const expectApproxEqAbs = std.testing.expectApproxEqAbs;
-const pi = std.math.pi;
+const pi = math.pi;
 
 const Vec2 = @This();
 
@@ -167,6 +168,32 @@ test rotateAround {
     try expectApproxEqAbsVec2(Vec2{ .x = 2.0, .y = 0.0 }, rotateAround(.{ .x = 1.0, .y = 1.0 }, cor, 0.5 * pi), tol);
     try expectApproxEqAbsVec2(Vec2{ .x = 3.0, .y = 1.0 }, rotateAround(.{ .x = 1.0, .y = 1.0 }, cor, 1.0 * pi), tol);
     try expectApproxEqAbsVec2(Vec2{ .x = 2.0, .y = 2.0 }, rotateAround(.{ .x = 1.0, .y = 1.0 }, cor, 1.5 * pi), tol);
+}
+
+pub fn snapToGrid(v: Vec2, cell_size: f32) Vec2 {
+    return .{
+        .x = @round(v.x / cell_size) * cell_size,
+        .y = @round(v.y / cell_size) * cell_size,
+    };
+}
+test snapToGrid {
+    const tol = 0.001;
+
+    try expectApproxEqAbsVec2(.{ .x = 0.0, .y = 0.0 }, snapToGrid(.{ .x = 0.0, .y = 0.0 }, 1.0), tol);
+    try expectApproxEqAbsVec2(.{ .x = 0.0, .y = 0.0 }, snapToGrid(.{ .x = 0.0, .y = 0.0 }, 2.0), tol);
+    try expectApproxEqAbsVec2(.{ .x = 0.0, .y = 0.0 }, snapToGrid(.{ .x = 0.0, .y = 0.0 }, 0.5), tol);
+
+    try expectApproxEqAbsVec2(.{ .x = 0.0, .y = 0.0 }, snapToGrid(.{ .x = 0.3, .y = 0.3 }, 1.0), tol);
+    try expectApproxEqAbsVec2(.{ .x = 0.0, .y = 0.0 }, snapToGrid(.{ .x = 0.3, .y = 0.3 }, 2.0), tol);
+    try expectApproxEqAbsVec2(.{ .x = 0.5, .y = 0.5 }, snapToGrid(.{ .x = 0.3, .y = 0.3 }, 0.5), tol);
+
+    try expectApproxEqAbsVec2(.{ .x = 1.0, .y = 1.0 }, snapToGrid(.{ .x = 0.5, .y = 0.5 }, 1.0), tol);
+    try expectApproxEqAbsVec2(.{ .x = 0.0, .y = 0.0 }, snapToGrid(.{ .x = 0.5, .y = 0.5 }, 2.0), tol);
+    try expectApproxEqAbsVec2(.{ .x = 0.5, .y = 0.5 }, snapToGrid(.{ .x = 0.5, .y = 0.5 }, 0.5), tol);
+
+    try expectApproxEqAbsVec2(.{ .x = 1.0, .y = 1.0 }, snapToGrid(.{ .x = 1.0, .y = 1.0 }, 1.0), tol);
+    try expectApproxEqAbsVec2(.{ .x = 2.0, .y = 2.0 }, snapToGrid(.{ .x = 1.0, .y = 1.0 }, 2.0), tol);
+    try expectApproxEqAbsVec2(.{ .x = 1.0, .y = 1.0 }, snapToGrid(.{ .x = 1.0, .y = 1.0 }, 0.5), tol);
 }
 
 pub const zero: Vec2 = .{

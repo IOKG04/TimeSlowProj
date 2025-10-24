@@ -1,6 +1,7 @@
 const std = @import("std");
 const math = std.math;
 const Vec2 = @import("Vec2");
+const options = @import("options");
 
 const game = @import("../game.zig");
 const GameObject = @import("../GameObject.zig");
@@ -30,8 +31,8 @@ pub fn init(gpa: Allocator, parent: *const GameObject) GameObject.UpdateError!*G
         .game_object = .{
             .transform = .{
                 .scale = .{
-                    .x = @as(f32, @floatFromInt(gun_texture.width)) * game.units_per_pixel,
-                    .y = @as(f32, @floatFromInt(gun_texture.height)) * game.units_per_pixel,
+                    .x = @as(f32, @floatFromInt(gun_texture.width)) * options.units_per_pixel,
+                    .y = @as(f32, @floatFromInt(gun_texture.height)) * options.units_per_pixel,
                 },
             },
 
@@ -43,7 +44,7 @@ pub fn init(gpa: Allocator, parent: *const GameObject) GameObject.UpdateError!*G
                 .transform = .{
                     .position = .{
                         .x = 0.0,
-                        .y = @as(f32, @floatFromInt(gun_texture.height)) / 2.0 * game.units_per_pixel + 2.0 * game.units_per_pixel,
+                        .y = @as(f32, @floatFromInt(gun_texture.height)) / 2.0 * options.units_per_pixel + 2.0 * options.units_per_pixel,
                     },
                 },
             } },

@@ -1,5 +1,6 @@
 const std = @import("std");
 const Vec2 = @import("Vec2");
+const options = @import("options");
 
 const game = @import("../../game.zig");
 const GameObject = @import("../../GameObject.zig");
@@ -27,7 +28,7 @@ pub fn init(gpa: Allocator, position: Vec2) GameObject.UpdateError!*Box {
             .draw = .{ .texture = try game.texture_manager.load(gpa, "box") },
 
             .collider = .{ .rounded_rectangle = .{
-                .radius = game.units_per_pixel * 4.0,
+                .radius = options.units_per_pixel * 4.0,
             } },
             .collision_layer = .{
                 .movement = true,
