@@ -248,8 +248,6 @@ fn rectangleRectangleCollision(a: Collision.Collider.Rectangle, b: Collision.Col
     };
 }
 
-// TODO: There's currently a bug where the collision might not count
-//       if the circle is inside the rounded rectangle. Fix that.
 fn circleRoundedCollision(c: Collision.Collider.Circle, r: Collision.Collider.RoundedRectangle, layers: Collision.Layer) ?[2]Collision {
     assert(r.radius >= 0.0);
     assert(c.radius >= 0.0);
@@ -262,15 +260,14 @@ fn circleRoundedCollision(c: Collision.Collider.Circle, r: Collision.Collider.Ro
         .y = math.clamp(c.position.y, r.position.y - r_size.y / 2.0, r.position.y + r_size.y / 2.0),
     };
 
-    const remaining_diff_dir: Vec2 = c.position.subtract(closest_to_c_no_radius).normalizeSafe() orelse .zero;
-    const closest_to_c = closest_to_c_no_radius.add(remaining_diff_dir.scale(r.radius));
-
-    const difference = closest_to_c.subtract(c.position);
+    const difference = closest_to_c_no_radius.subtract(c.position);
     const distance = difference.len();
-    const max_distance = c.radius;
+    const max_distance = c.radius + r.radius;
     const overlap = max_distance - distance;
 
-    return if (overlap <= 0.0) null else return .{
+    if (overlap <= 0.0) return null;
+
+    return .{
         .{ // for `c`
             .layers = layers,
             .normal = difference.scale(-1.0).normalizeSafe() orelse .{ .x = -1.0 },
