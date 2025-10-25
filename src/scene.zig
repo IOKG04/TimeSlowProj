@@ -148,6 +148,10 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
             if (go.paused) continue;
             const go_layered_collider = collision_logic.LayeredCollider.fromGameObject(go.*) orelse continue;
 
+            var max_depth: f32 = 0.0;
+            var max_depth_idx: ?usize = null;
+            var max_collision: ?Collision = null;
+
             for (0..bg.colliders.len) |idx| {
                 const bg_collider = bg.getColliderIdx(idx);
                 const bg_layered_collider: collision_logic.LayeredCollider = .{
@@ -157,8 +161,16 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
 
                 const go_collision_info: Collision, _ = collision_logic.getCollisions(go_layered_collider, bg_layered_collider) orelse continue;
 
+                if (go_collision_info.depth > max_depth) {
+                    max_depth = go_collision_info.depth;
+                    max_depth_idx = idx;
+                    max_collision = go_collision_info;
+                }
+            }
+
+            if (max_depth_idx) |idx| {
                 const bg_as_go: GameObject = .{
-                    .collider = bg_collider,
+                    .collider = bg.getColliderIdx(idx),
                     .collision_layer = .background_preset,
                     .metadata = .{
                         .movability = .wall,
@@ -168,8 +180,7 @@ pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_fac
                     .update = GameObject.no.update,
                     .deinit = GameObject.no.deinit,
                 };
-
-                try go.onCollision(go, &bg_as_go, go_collision_info, gpa);
+                try go.onCollision(go, &bg_as_go, max_collision.?, gpa);
             }
         }
     }
@@ -237,12 +248,13 @@ fn drawObject(transform: GameObject.Transform, draw_object: GameObject.DrawObjec
                 .rotation = texture_transformed.transform.rotation + transform.rotation,
                 .scale = texture_transformed.transform.scale.multiply(transform.scale),
             };
+            const flipped = texture_transformed.flipped;
             texture.drawPro(
                 .{
                     .x = 0,
                     .y = 0,
-                    .width = @floatFromInt(texture.width),
-                    .height = @floatFromInt(texture.height),
+                    .width = @floatFromInt(if (flipped.horizontal) -texture.width else texture.width),
+                    .height = @floatFromInt(if (flipped.vertical) -texture.height else texture.height),
                 },
                 .{
                     .x = texture_transform.position.x,

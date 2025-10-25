@@ -42,7 +42,11 @@ pub const DrawObject = union (enum) {
     texture: *const raylib.Texture2D,
     texture_transformed: struct {
         texture: *const raylib.Texture2D,
-        transform: Transform,
+        transform: Transform = .{},
+        flipped: struct {
+            horizontal: bool = false,
+            vertical: bool = false,
+        } = .{},
     },
     circle: raylib.Color,
     circle_dbg: raylib.Color,
@@ -52,6 +56,7 @@ pub const DrawOrder = enum {
     invisible,
     background,
     default,
+    // TODO: Possibly add `gun` here.
     foreground,
 
     pub const draw_order: [3]DrawOrder = .{

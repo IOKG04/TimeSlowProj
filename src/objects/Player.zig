@@ -131,4 +131,6 @@ fn onCollision(self: *GameObject, other: *const GameObject, collision_info: Coll
     player.game_object.transform.position = player.game_object.transform.position.add(collision_info.normal.scale(movement_factor));
 
     //@import("../main.zig").log.debug("{d} {d}\t{d}", .{ collision_info.normal.x, collision_info.normal.y, collision_info.depth });
+
+    game.camera.target = player.game_object.transform.position.toRaylib();
 }

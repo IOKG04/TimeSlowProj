@@ -13,6 +13,9 @@ const pi = math.pi;
 
 const Gun = @This();
 
+const gun_texture_height = 4;
+const texture_offset = @as(comptime_float, @floatFromInt(gun_texture_height)) / 2.0 * options.units_per_pixel + 2.0 * options.units_per_pixel;
+
 const turning_speed = pi * 2.0;
 
 game_object: GameObject,
@@ -44,11 +47,11 @@ pub fn init(gpa: Allocator, parent: *const GameObject) GameObject.UpdateError!*G
                 .transform = .{
                     .position = .{
                         .x = 0.0,
-                        .y = @as(f32, @floatFromInt(gun_texture.height)) / 2.0 * options.units_per_pixel + 2.0 * options.units_per_pixel,
+                        .y = texture_offset,
                     },
                 },
             } },
-            .draw_order = .background,
+            .draw_order = .foreground,
         },
         .center = &parent.transform.position,
         .radius = parent.transform.scale.abs().maxDimension(),
@@ -74,6 +77,23 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
         break :blk guess;
     };
     transform.rotation += math.clamp(math.sign(delta_angle) * turning_speed * dt, -@abs(delta_angle), @abs(delta_angle));
+
+    while (transform.rotation >= pi) : (transform.rotation -= 2.0 * pi) {}
+    while (transform.rotation <= -pi) : (transform.rotation += 2.0 * pi) {}
+
+    if (@abs(transform.rotation) <= pi / 2.0) { // not flipped
+        gun.game_object.draw.texture_transformed.flipped.vertical = false;
+        gun.game_object.draw.texture_transformed.transform.position = .{
+            .x = 0.0,
+            .y = texture_offset,
+        };
+    } else { // flipped
+        gun.game_object.draw.texture_transformed.flipped.vertical = true;
+        gun.game_object.draw.texture_transformed.transform.position = .{
+            .x = 0.0,
+            .y = -texture_offset,
+        };
+    }
 
     const position_offset: Vec2 = .fromPolar(transform.rotation, gun.radius);
     transform.position = gun.center.add(position_offset);
