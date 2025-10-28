@@ -72,7 +72,7 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
     transform.position = transform.position.add(speed.scale(dt * velocity));
 
     const mouse_pos = raylib.getMousePosition();
-    const world_mouse_pos = raylib.getScreenToWorld2D(mouse_pos, game.camera);
+    const world_mouse_pos = raylib.getScreenToWorld2D(mouse_pos, scene.camera);
     const internal_world_mouse_pos: Vec2 = .fromRaylib(world_mouse_pos);
     const phi = internal_world_mouse_pos.subtract(transform.position).angle();
 
@@ -110,7 +110,7 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
     if (raylib.isKeyDown(.kp_9)) transform.rotation += std.math.pi / 2.0 * dt;
     if (raylib.isKeyDown(.kp_7)) transform.rotation -= std.math.pi / 2.0 * dt;
 
-    game.camera.target = transform.position.toRaylib();
+    scene.camera.target = transform.position.toRaylib();
 }
 
 fn deinit(go: *GameObject, gpa: Allocator) void {
@@ -132,5 +132,5 @@ fn onCollision(self: *GameObject, other: *const GameObject, collision_info: Coll
 
     //@import("../main.zig").log.debug("{d} {d}\t{d}", .{ collision_info.normal.x, collision_info.normal.y, collision_info.depth });
 
-    game.camera.target = player.game_object.transform.position.toRaylib();
+    scene.camera.target = player.game_object.transform.position.toRaylib();
 }

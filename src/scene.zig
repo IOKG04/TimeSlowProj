@@ -20,6 +20,22 @@ var background: ?LevelBackground = null;
 var game_objects: ArrayList(RemovableGameObject) = .empty;
 var to_add: ArrayList(RemovableGameObject) = .empty;
 
+/// While currently this is public,
+/// this should be replaced with a
+/// camera controller some day.
+pub var camera: raylib.Camera2D = .{
+    .offset = .{ .x = @abs(options.window_w) / 2, .y = @abs(options.window_h) / 2 },
+    .target = .{ .x = 0.0, .y = 0.0 },
+    .rotation = 0.0,
+    .zoom = @as(f32, @floatFromInt(options.window_h)) / 8.0,
+};
+/// `null` means no time stretching.
+pub var center_of_gravity: ?*const Vec2 = null;
+/// If positive, further objects are faster,
+/// if zero, they'll all move the same,
+/// if negative, they'll move slower.
+pub var time_stretch_factor: f32 = -0.1;
+
 /// Scene takes ownership of `game_object`.
 /// Will only take effect when `update` is called.
 ///
@@ -93,16 +109,8 @@ pub fn deinit(gpa: Allocator) void {
     unloadBackground(gpa);
 }
 
-/// Updates scene and game objects.
-///
-/// If `time_stretch_factor` is positive,
-/// further objects are faster,
-/// if it's zero, they'll all move the same,
-/// if it's negative, they'll move slower.
-pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_factor: f32) UpdateError!void {
-    try updateGameObjects(gpa, dt, center_of_gravity, time_stretch_factor);
-}
-pub fn updateGameObjects(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_factor: f32) UpdateError!void {
+/// Updates scene and processes added and removed game objects.
+pub fn update(gpa: Allocator, dt: f32) UpdateError!void {
     // Add game objects first, then remove them. This
     // should keep it from doing weird behaviour if
     // an object is both added and removed during the
@@ -134,13 +142,19 @@ pub fn updateGameObjects(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_
         }
     }
 
+    try updateGameObjects(gpa, dt);
+}
+pub fn updateGameObjects(gpa: Allocator, dt: f32) UpdateError!void {
     // Update game objects.
     for (game_objects.items) |rgo| {
         const go = rgo.game_object;
         if (go.paused) continue;
-        const position = go.transform.position;
-        const distance_from_cog = position.subtract(center_of_gravity).len();
-        const time_stretch = @exp2(time_stretch_factor * distance_from_cog);
+        const time_stretch: f32 = blk: {
+            const cog = (center_of_gravity orelse break :blk 1).*;
+            const position = go.transform.position;
+            const distance_from_cog = position.subtract(cog).len();
+            break :blk @exp2(time_stretch_factor * distance_from_cog);
+        };
         try go.update(go, gpa, dt * time_stretch);
     }
 
@@ -210,6 +224,9 @@ pub const UpdateError = GameObject.UpdateError || Allocator.Error;
 
 /// Draws game objects in scene.
 pub fn draw() void {
+    camera.begin();
+    defer camera.end();
+
     for (GameObject.DrawOrder.draw_order) |do| {
         for (game_objects.items) |rgo| {
             const go = rgo.game_object;
@@ -299,6 +316,9 @@ fn drawObject(transform: GameObject.Transform, draw_object: GameObject.DrawObjec
 }
 
 pub fn drawColliders() void {
+    camera.begin();
+    defer camera.end();
+
     if (background) |bg| {
         for (0..bg.colliders.len) |idx| {
             const collider = bg.getColliderIdx(idx);
