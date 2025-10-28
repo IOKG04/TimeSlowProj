@@ -13,7 +13,7 @@ const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const assert = std.debug.assert;
 
-const log = @import("main.zig").log;
+const log = std.log.scoped(.scene);
 
 var background: ?LevelBackground = null;
 
@@ -100,6 +100,9 @@ pub fn deinit(gpa: Allocator) void {
 /// if it's zero, they'll all move the same,
 /// if it's negative, they'll move slower.
 pub fn update(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_factor: f32) UpdateError!void {
+    try updateGameObjects(gpa, dt, center_of_gravity, time_stretch_factor);
+}
+pub fn updateGameObjects(gpa: Allocator, dt: f32, center_of_gravity: Vec2, time_stretch_factor: f32) UpdateError!void {
     // Add game objects first, then remove them. This
     // should keep it from doing weird behaviour if
     // an object is both added and removed during the

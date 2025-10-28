@@ -59,7 +59,12 @@ pub fn run(gpa: Allocator, arena: Allocator) !void {
 
     while (!raylib.windowShouldClose()) {
         const dt = raylib.getFrameTime();
-        try scene.update(gpa, dt, player.game_object.transform.position, -0.1);
+
+        switch (state) {
+            .game => {
+                try scene.update(gpa, dt, player.game_object.transform.position, -0.1);
+            },
+        }
 
         // zig fmt: off
         raylib.beginDrawing();
@@ -75,6 +80,8 @@ pub fn run(gpa: Allocator, arena: Allocator) !void {
 }
 
 pub const State = enum {
+    /// The primary game state, with the player,
+    /// movement, guns, and all that stuff.
     game,
     // main_menu, settings_menu, settings_menu_in_game, etc.
 };

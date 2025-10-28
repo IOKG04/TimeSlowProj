@@ -249,8 +249,8 @@ fn rectangleRectangleCollision(a: Collision.Collider.Rectangle, b: Collision.Col
 }
 
 fn circleRoundedCollision(c: Collision.Collider.Circle, r: Collision.Collider.RoundedRectangle, layers: Collision.Layer) ?[2]Collision {
-    assert(r.radius >= 0.0);
     assert(c.radius >= 0.0);
+    assert(r.radius >= 0.0);
 
     const r_size = r.scale.subtract(.{ .x = 2.0 * r.radius, .y = 2.0 * r.radius });
     assert(r_size.x >= 0.0 and r_size.y >= 0.0);
@@ -292,7 +292,6 @@ fn rectangleRoundedCollision(a: Collision.Collider.Rectangle, b: Collision.Colli
         .y = math.clamp(a.position.y, b.position.y - b_size.y / 2.0, b.position.y + b_size.y / 2.0),
     };
 
-    // TODO: Maybe implement logic custom-ly.
     const b_as_circle: Collision.Collider.Circle = .{
         .position = closest_to_a_no_radius,
         .radius = b.radius,
@@ -312,13 +311,16 @@ fn roundedRoundedCollision(a: Collision.Collider.RoundedRectangle, b: Collision.
         .y = math.clamp(b.position.y, a.position.y - a_size.y / 2.0, a.position.y + a_size.y / 2.0),
     };
 
-    // TODO: Maybe implement logic custom-ly.
     const a_as_circle: Collision.Collider.Circle = .{
         .position = closest_to_b,
         .radius = a.radius,
     };
     return circleRoundedCollision(a_as_circle, b, layers);
 }
+
+// TODO: I believe that the `...RoundedCollision` functions currently
+//       Return an incorrect depth if the other collider is inside
+//       the rectangle portion of the rounded rectangle.
 
 /// Returns sign of `f`, but replaces `0.0` with `1.0`.
 fn noZeroSign(f: f32) f32 {
