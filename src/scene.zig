@@ -36,6 +36,20 @@ pub var center_of_gravity: ?*const Vec2 = null;
 /// if negative, they'll move slower.
 pub var time_stretch_factor: f32 = -0.1;
 
+/// The currently used control scheme.
+///
+/// If a game object's `update` function
+/// gets called, the active field must
+/// be `game_object`.
+pub var control_mode: union (enum) {
+    game_object: enum {
+        /// Normal four-directional top-down
+        /// player control scheme.
+        player,
+    },
+    // TODO: textbox controls, etc.
+} = .{ .game_object = .player };
+
 /// Scene takes ownership of `game_object`.
 /// Will only take effect when `update` is called.
 ///
@@ -107,6 +121,8 @@ pub fn deinit(gpa: Allocator) void {
     to_add = .empty;
 
     unloadBackground(gpa);
+
+    control_mode = .{ .game_object = .player };
 }
 
 /// Updates scene and processes added and removed game objects.
@@ -142,9 +158,13 @@ pub fn update(gpa: Allocator, dt: f32) UpdateError!void {
         }
     }
 
-    try updateGameObjects(gpa, dt);
+    switch (control_mode) {
+        .game_object => try updateGameObjects(gpa, dt),
+    }
 }
 pub fn updateGameObjects(gpa: Allocator, dt: f32) UpdateError!void {
+    assert(control_mode == .game_object);
+
     // Update game objects.
     for (game_objects.items) |rgo| {
         const go = rgo.game_object;
