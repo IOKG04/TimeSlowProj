@@ -61,14 +61,15 @@ pub fn run(gpa: Allocator, arena: Allocator) !void {
             },
         }
 
-        // zig fmt: off
-        raylib.beginDrawing();
+        {
+            raylib.beginDrawing();
+            defer raylib.endDrawing();
+
             raylib.clearBackground(.black);
             scene.draw();
             if (options.draw_colliders) scene.drawColliders();
             raylib.drawFPS(0, 0);
-        raylib.endDrawing();
-        // zig fmt: on
+        }
     }
 }
 

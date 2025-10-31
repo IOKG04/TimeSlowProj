@@ -242,7 +242,7 @@ pub fn updateGameObjects(gpa: Allocator, dt: f32) UpdateError!void {
 }
 pub const UpdateError = GameObject.UpdateError || Allocator.Error;
 
-/// Draws game objects in scene.
+/// Draws all game objects in scene.
 pub fn draw() void {
     camera.begin();
     defer camera.end();
@@ -252,7 +252,7 @@ pub fn draw() void {
             const go = rgo.game_object;
             if (go.draw_order != do) continue;
 
-            drawObject(go.transform, go.draw);
+            drawObject(go);
         }
     }
 
@@ -260,8 +260,13 @@ pub fn draw() void {
         bg.texture.drawEx(bg.origin.toRaylib(), 0.0, options.units_per_pixel, .white);
     }
 }
-fn drawObject(transform: GameObject.Transform, draw_object: GameObject.DrawObject) void {
-    switch (draw_object) {
+fn drawObject(go: *GameObject) void {
+    const transform = go.transform;
+    const draw_object = go.draw;
+
+    draw_switch: switch (draw_object) {
+        .none => {},
+
         .texture => |texture| {
             texture.drawPro(
                 .{
@@ -331,7 +336,11 @@ fn drawObject(transform: GameObject.Transform, draw_object: GameObject.DrawObjec
             );
         },
 
-        .none => {},
+        .custom => |custom| {
+            const result = custom(go);
+            assert(result != .custom);
+            continue :draw_switch result;
+        },
     }
 }
 

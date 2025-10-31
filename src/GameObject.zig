@@ -39,6 +39,7 @@ pub const Transform = struct {
 };
 pub const DrawObject = union (enum) {
     none: void,
+
     texture: *const raylib.Texture2D,
     texture_transformed: struct {
         texture: *const raylib.Texture2D,
@@ -48,9 +49,15 @@ pub const DrawObject = union (enum) {
             vertical: bool = false,
         } = .{},
     },
+
     circle: raylib.Color,
     circle_dbg: raylib.Color,
     rectangle: raylib.Color,
+
+    /// Might draw itself and return `.none`,
+    /// might return a draw object.
+    /// Returned draw object may not be `custom`.
+    custom: *const fn (go: *GameObject) DrawObject,
 };
 pub const DrawOrder = enum {
     invisible,

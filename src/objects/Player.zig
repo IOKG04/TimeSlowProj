@@ -101,6 +101,11 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
     if (raylib.isKeyDown(.kp_9)) transform.rotation += std.math.pi / 2.0 * dt;
     if (raylib.isKeyDown(.kp_7)) transform.rotation -= std.math.pi / 2.0 * dt;
 
+    if (raylib.isKeyPressed(.kp_enter)) {
+        const font = raylib.getFontDefault() catch return error.Generic;
+        _ = try objects.dbg.PushableText.init(gpa, "text :3", font, world_mouse_pos);
+    }
+
     scene.camera.target = transform.position.toRaylib();
 }
 fn updateControlled(player: *Player, gpa: Allocator, dt: f32) GameObject.UpdateError!void {
