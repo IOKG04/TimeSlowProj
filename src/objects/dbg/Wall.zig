@@ -30,7 +30,7 @@ pub fn init(gpa: Allocator, position: Vec2, shape: Shape) GameObject.UpdateError
                 },
             },
 
-            .update = GameObject.noop.update,
+            .update = null,
             .deinit = deinit,
 
             .draw = switch (shape) {
@@ -46,7 +46,7 @@ pub fn init(gpa: Allocator, position: Vec2, shape: Shape) GameObject.UpdateError
                 .movement = true,
                 .projectiles = true,
             },
-            .onCollision = GameObject.noop.onCollision,
+            .onCollision = null,
 
             .metadata = .{
                 .movability = .wall,

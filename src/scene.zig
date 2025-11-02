@@ -64,6 +64,7 @@ pub fn addGameObject(gpa: Allocator, game_object: *GameObject) Allocator.Error!v
         }
         break :not_owned true;
     });
+    assert(game_object.deinit != null);
     try to_add.append(gpa, .{ .game_object = game_object });
 }
 /// If scene owns `game_object`, it will be removed.
@@ -108,14 +109,14 @@ pub fn unloadBackground(gpa: Allocator) void {
 pub fn deinit(gpa: Allocator) void {
     for (game_objects.items) |rgo| {
         const go = rgo.game_object;
-        go.deinit(go, gpa);
+        go.deinit.?(go, gpa);
     }
     game_objects.deinit(gpa);
     game_objects = .empty;
 
     for (to_add.items) |rgo| {
         const go = rgo.game_object;
-        go.deinit(go, gpa);
+        go.deinit.?(go, gpa);
     }
     to_add.deinit(gpa);
     to_add = .empty;
@@ -135,14 +136,13 @@ pub fn update(gpa: Allocator, dt: f32) UpdateError!void {
         errdefer {
             for (to_add.items) |rgo| {
                 const go = rgo.game_object;
-                go.deinit(go, gpa);
+                go.deinit.?(go, gpa);
             }
         }
         try game_objects.appendSlice(gpa, to_add.items);
         log.debug("added game_object {d} - {d}", .{game_objects.items.len - to_add.items.len, game_objects.items.len - 1});
     }
-    to_add.deinit(gpa);
-    to_add = .empty;
+    to_add.clearRetainingCapacity();
 
     { // remove removed objects
         var i: usize = 0;
@@ -152,7 +152,7 @@ pub fn update(gpa: Allocator, dt: f32) UpdateError!void {
                 i += 1;
                 continue;
             }
-            rgo.game_object.deinit(rgo.game_object, gpa);
+            rgo.game_object.deinit.?(rgo.game_object, gpa);
             _ = game_objects.swapRemove(i);
             log.debug("removed game_object {d}", .{i});
         }
@@ -175,7 +175,9 @@ pub fn updateGameObjects(gpa: Allocator, dt: f32) UpdateError!void {
             const distance_from_cog = position.subtract(cog).len();
             break :blk @exp2(time_stretch_factor * distance_from_cog);
         };
-        try go.update(go, gpa, dt * time_stretch);
+        if (go.update) |goUpdate| {
+            try goUpdate(go, gpa, dt * time_stretch);
+        }
     }
 
     // Resolve collisions with background.
@@ -214,10 +216,12 @@ pub fn updateGameObjects(gpa: Allocator, dt: f32) UpdateError!void {
                         .is_background = true,
                     },
 
-                    .update = GameObject.no.update,
-                    .deinit = GameObject.no.deinit,
+                    .update = null,
+                    .deinit = null,
                 };
-                try go.onCollision(go, &bg_as_go, max_collision.?, gpa);
+                if (go.onCollision) |goOnCollision| {
+                    try goOnCollision(go, &bg_as_go, max_collision.?, gpa);
+                }
             }
         }
     }
@@ -235,8 +239,12 @@ pub fn updateGameObjects(gpa: Allocator, dt: f32) UpdateError!void {
 
             const cinfo_self: Collision, const cinfo_other: Collision = collision_logic.getCollisions(self_layered_collider, other_layered_collider) orelse continue; // Possibly add `@branchHint(.likely);` to the `continue` branch, considering most objects aren't colliding.
 
-            try self.onCollision(self, other, cinfo_self, gpa);
-            try other.onCollision(other, self, cinfo_other, gpa);
+            if (self.onCollision) |selfOnCollision| {
+                try selfOnCollision(self, other, cinfo_self, gpa);
+            }
+            if (other.onCollision) |otherOnCollision| {
+                try otherOnCollision(other, self, cinfo_other, gpa);
+            }
         }
     }
 }

@@ -22,7 +22,7 @@ pub fn init(gpa: Allocator, position: Vec2) GameObject.UpdateError!*Box {
                 .position = position,
             },
 
-            .update = GameObject.noop.update,
+            .update = null,
             .deinit = deinit,
 
             .draw = .{ .texture = try game.texture_manager.load(gpa, "box") },

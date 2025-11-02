@@ -35,7 +35,7 @@ pub fn init(gpa: Allocator, text: [:0]const u8, font: raylib.Font, position: Vec
                 .position = position,
             },
 
-            .update = GameObject.noop.update,
+            .update = null,
             .deinit = deinit,
 
             .draw = .{ .custom = draw },

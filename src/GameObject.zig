@@ -20,15 +20,18 @@ const GameObject = @This();
 transform: Transform = .{},
 
 paused: bool = false,
-update: *const fn (self: *GameObject, gpa: Allocator, dt: f32) UpdateError!void,
-deinit: *const fn (self: *GameObject, gpa: Allocator) void,
+/// `null` implies updating wouldn't do anything.
+update: ?*const fn (self: *GameObject, gpa: Allocator, dt: f32) UpdateError!void,
+/// Should NEVER be `null` for actual game objects.
+deinit: ?*const fn (self: *GameObject, gpa: Allocator) void,
 
 draw: DrawObject = .none,
 draw_order: DrawOrder = .default,
 
 collider: Collision.Collider = .none,
 collision_layer: Collision.Layer = .{},
-onCollision: *const fn (self: *GameObject, other: *const GameObject, collision_info: Collision, gpa: Allocator) UpdateError!void = no.onCollision,
+/// `null` implies colliding wouldn't do anything.
+onCollision: ?*const fn (self: *GameObject, other: *const GameObject, collision_info: Collision, gpa: Allocator) UpdateError!void = null,
 
 metadata: Metadata = .{},
 
@@ -91,30 +94,6 @@ pub const UpdateError = error {
     LoadTexture,
 } || Allocator.Error;
 
-/// The functions should never be called.
-pub const no = struct {
-    pub fn update(go: *GameObject, gpa: Allocator, dt: f32) UpdateError!void {
-        _ = .{ go, gpa, dt };
-        unreachable;
-    }
-    pub fn deinit(go: *GameObject, gpa: Allocator) void {
-        _ = .{ go, gpa };
-        unreachable;
-    }
-    pub fn onCollision(self: *GameObject, other: *const GameObject, collision_info: Collision, gpa: Allocator) UpdateError!void {
-        _ = .{ self, other, collision_info, gpa };
-        unreachable;
-    }
-};
-/// Functions that do nothing.
-pub const noop = struct {
-    pub fn update(go: *GameObject, gpa: Allocator, dt: f32) UpdateError!void {
-        _ = .{ go, gpa, dt };
-    }
-    pub fn onCollision(self: *GameObject, other: *const GameObject, collision_info: Collision, gpa: Allocator) UpdateError!void {
-        _ = .{ self, other, collision_info, gpa };
-    }
-};
 /// Useful functions.
 pub const useful = struct {
     pub const on_collision = struct {
