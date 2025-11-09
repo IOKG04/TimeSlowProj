@@ -3,6 +3,7 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const strip = b.option(bool, "strip", "Strip output of symbols");
 
     const window_w = b.option(u31, "window_w", "Width of the games window") orelse 900;
     const window_h = b.option(u31, "window_h", "Height of the games window") orelse 540;
@@ -30,11 +31,13 @@ pub fn build(b: *std.Build) void {
     const raygui = raylib_dep.module("raygui");
     _ = raygui;
     const raylib_artifact = raylib_dep.artifact("raylib");
+    _ = raylib_artifact;
 
     const vec2_mod = b.addModule("Vec2", .{
         .root_source_file = b.path("modules/Vec2.zig"),
         .target = target,
         .optimize = optimize,
+        .strip = strip,
     });
     vec2_mod.addImport("raylib", raylib);
 
@@ -42,15 +45,16 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("modules/Collision.zig"),
         .target = target,
         .optimize = optimize,
+        .strip = strip,
     });
     collision_mod.addImport("Vec2", vec2_mod);
     collision_mod.addImport("raylib", raylib);
-    collision_mod.linkLibrary(raylib_artifact);
 
     const level_background_mod = b.addModule("LevelBackground", .{
         .root_source_file = b.path("modules/LevelBackground.zig"),
         .target = target,
         .optimize = optimize,
+        .strip = strip,
     });
     level_background_mod.addImport("Vec2", vec2_mod);
     level_background_mod.addImport("Collision", collision_mod);
@@ -62,9 +66,9 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
+            .strip = strip,
         }),
     });
-    exe.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
     exe.root_module.addOptions("options", options);
     exe.root_module.addImport("Vec2", vec2_mod);
@@ -93,9 +97,9 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("level_editor.zig"),
             .target = b.graph.host,
             .optimize = optimize,
+            .strip = strip,
         }),
     });
-    level_editor.linkLibrary(raylib_artifact);
     level_editor.root_module.addImport("raylib", raylib);
     level_editor.root_module.addOptions("options", options);
     level_editor.root_module.addImport("Vec2", vec2_mod);
