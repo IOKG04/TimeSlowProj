@@ -7,6 +7,7 @@ const Collision = @import("Collision");
 const LevelBackground = @import("LevelBackground");
 
 const collision_logic = @import("collision_logic.zig");
+const Dialogue = @import("Dialogue.zig");
 const GameObject = @import("GameObject.zig");
 
 const Allocator = std.mem.Allocator;
@@ -36,19 +37,21 @@ pub var center_of_gravity: ?*const Vec2 = null;
 /// if negative, they'll move slower.
 pub var time_stretch_factor: f32 = -0.1;
 
-/// The currently used control scheme.
+/// The currently used control scheme
+/// is located at the top of this stack.
 ///
 /// If a game object's `update` function
 /// gets called, the active field must
 /// be `game_object`.
-pub var control_mode: union (enum) {
+pub var control_mode: ArrayList(ControlMode) = .empty;
+pub const ControlMode = union (enum) {
     game_object: enum {
         /// Normal four-directional top-down
         /// player control scheme.
         player,
     },
-    // TODO: textbox controls, etc.
-} = .{ .game_object = .player };
+    dialogue: *Dialogue,
+};
 
 /// Scene takes ownership of `game_object`.
 /// Will only take effect when `update` is called.
@@ -105,25 +108,40 @@ pub fn unloadBackground(gpa: Allocator) void {
     background = null;
 }
 
+/// Creates a copy of `dialogue` on the heap.
+pub fn loadDialogue(gpa: Allocator, dialogue: Dialogue) Allocator.Error!void {
+    const dialogue_cpy = try gpa.create(Dialogue);
+    errdefer gpa.destroy(dialogue_cpy);
+    dialogue_cpy.* = dialogue;
+    try control_mode.append(gpa, .{ .dialogue = dialogue_cpy });
+    errdefer _ = control_mode.pop();
+}
+
 /// Deinitializes all game objects and the list containing them.
 pub fn deinit(gpa: Allocator) void {
     for (game_objects.items) |rgo| {
         const go = rgo.game_object;
         go.deinit.?(go, gpa);
     }
-    game_objects.deinit(gpa);
-    game_objects = .empty;
+    game_objects.clearAndFree(gpa);
 
     for (to_add.items) |rgo| {
         const go = rgo.game_object;
         go.deinit.?(go, gpa);
     }
-    to_add.deinit(gpa);
-    to_add = .empty;
+    to_add.clearAndFree(gpa);
 
     unloadBackground(gpa);
 
-    control_mode = .{ .game_object = .player };
+    for (control_mode.items) |cm| {
+        switch (cm) {
+            .dialogue => |dialogue| {
+                gpa.destroy(dialogue);
+            },
+            .game_object => {},
+        }
+    }
+    control_mode.clearAndFree(gpa);
 }
 
 /// Updates scene and processes added and removed game objects.
@@ -158,12 +176,24 @@ pub fn update(gpa: Allocator, dt: f32) UpdateError!void {
         }
     }
 
-    switch (control_mode) {
+    const current_control_mode: ControlMode = control_mode.getLastOrNull() orelse blk: {
+        @branchHint(.unlikely);
+        try control_mode.append(gpa, .{ .game_object = .player });
+        break :blk .{ .game_object = .player };
+    };
+    switch (current_control_mode) {
         .game_object => try updateGameObjects(gpa, dt),
+        .dialogue => |dialogue| {
+            const concluded = try dialogue.update(gpa);
+            if (concluded) {
+                gpa.destroy(dialogue);
+                _ = control_mode.pop();
+            }
+        },
     }
 }
 pub fn updateGameObjects(gpa: Allocator, dt: f32) UpdateError!void {
-    assert(control_mode == .game_object);
+    assert(control_mode.getLast() == .game_object);
 
     // Update game objects.
     for (game_objects.items) |rgo| {
@@ -251,7 +281,19 @@ pub fn updateGameObjects(gpa: Allocator, dt: f32) UpdateError!void {
 pub const UpdateError = GameObject.UpdateError || Allocator.Error;
 
 /// Draws all game objects in scene.
+///
+/// Asserts that `update` was called before.
 pub fn draw() void {
+    const current_control_mode = control_mode.getLast();
+    switch (current_control_mode) {
+        .game_object => drawLevel(),
+        .dialogue => |dialogue| {
+            drawLevel();
+            dialogue.draw();
+        }
+    }
+}
+fn drawLevel() void {
     camera.begin();
     defer camera.end();
 

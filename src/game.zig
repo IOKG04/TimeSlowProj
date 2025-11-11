@@ -2,6 +2,7 @@ const std = @import("std");
 const raylib = @import("raylib");
 const options = @import("options");
 
+const Dialogue = @import("Dialogue.zig");
 const GameObject = @import("GameObject.zig");
 const main = @import("main.zig");
 const objects = @import("objects.zig");
@@ -25,6 +26,8 @@ pub fn init(gpa: Allocator, arena: Allocator) !void {
     // init `texture_manager`
     texture_manager = .{ .arena = arena };
     errdefer texture_manager.deinit(gpa);
+
+    try texture_manager.preloadAssumeUnloaded(gpa, Dialogue.tb_texture_name);
 
     // set/load/init initial game scene
     errdefer scene.deinit(gpa);

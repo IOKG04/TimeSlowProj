@@ -4,6 +4,7 @@ const Vec2 = @import("Vec2");
 const Collision = @import("Collision");
 const options = @import("options");
 
+const Dialogue = @import("../Dialogue.zig");
 const game = @import("../game.zig");
 const GameObject = @import("../GameObject.zig");
 const objects = @import("../objects.zig");
@@ -63,7 +64,7 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
     const player: *Player = @fieldParentPtr("game_object", go);
     const transform = &player.game_object.transform;
 
-    if (scene.control_mode.game_object == .player) {
+    if (scene.control_mode.getLast().game_object == .player) {
         try updateControlled(player, gpa, dt);
     }
 
@@ -104,6 +105,16 @@ fn update(go: *GameObject, gpa: Allocator, dt: f32) GameObject.UpdateError!void 
     if (raylib.isKeyPressed(.kp_enter)) {
         const font = raylib.getFontDefault() catch return error.Generic;
         _ = try objects.dbg.PushableText.init(gpa, "text :3", font, world_mouse_pos);
+    }
+
+    if (raylib.isKeyPressed(.f10)) {
+        const font = raylib.getFontDefault() catch return error.Generic;
+        const dialogue: Dialogue = .{
+            .owner = player,
+            .callback = dialogueCallback,
+            .textbox = .init(test_dialogues[0], font, null, 0),
+        };
+        try scene.loadDialogue(gpa, dialogue);
     }
 
     scene.camera.target = transform.position.toRaylib();
@@ -150,4 +161,20 @@ fn onCollision(self: *GameObject, other: *const GameObject, collision_info: Coll
     player.game_object.transform.position = player.game_object.transform.position.add(collision_info.normal.scale(movement_factor));
 
     //@import("../main.zig").log.debug("{d} {d}\t{d}", .{ collision_info.normal.x, collision_info.normal.y, collision_info.depth });
+}
+
+const test_dialogues: [4][:0]const u8 = .{
+    "test",
+    "this is still a test",
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nMaecenas nec sem sagittis, consectetur nibh non, dapibus enim.\nNunc luctus rutrum lectus vel ornare.\nCurabitur quam neque, convallis ultricies risus at, pulvinar tincidunt.",
+    "#",
+};
+fn dialogueCallback(dialogue: Dialogue, gpa: Allocator, choice: ?Dialogue.Choice) GameObject.UpdateError!?Dialogue.Textbox {
+    _ = gpa;
+    _ = choice;
+    const textbox = dialogue.textbox;
+    const new_id = textbox.id + 1;
+    if (new_id >= test_dialogues.len) return null;
+    const new_textbox: Dialogue.Textbox = .init(test_dialogues[new_id], textbox.font, null, new_id);
+    return new_textbox;
 }
