@@ -51,6 +51,10 @@ pub fn loadAssumeUnloaded(tm: *TextureManager, gpa: Allocator, name: []const u8)
 
     return texture;
 }
+/// Asserts `name` is already loaded.
+pub fn loadAssumeLoaded(tm: *TextureManager, name: []const u8) *const Texture2D {
+    return tm.loaded.get(name).?;
+}
 
 pub const LoadError = error {
     LoadTexture,
